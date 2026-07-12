@@ -1,0 +1,264 @@
+openapi: 3.1.0
+info:
+  title: Meal Pilot Generate Weekly Meals API
+  version: 1.0.0
+  description: >
+    GenerateWeeklyMeals workflow (MealSuggestionEngine). Preference-aware
+    library-only generation into WeeklyPlan slots (pending). Modes: fill-empty
+    (default) and regenerate-non-approved. Rejecting a slot automatically
+    attempts one alternative in the same status flow. No AI recipe creation,
+    no day-subset parameter, no BuildGroceryList in this feature.
+servers:
+  - url: http://localhost:3000
+    description: Local development
+paths:
+  /weekly-plans/generate:
+    post:
+      operationId: generateWeeklyMeals
+      summary: >
+        Generate or refresh meal slots for a Monday week-start (create plan if
+        missing; reuse if present)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GenerateWeeklyMealsRequest"
+      responses:
+        "200":
+          description: >
+            Generation finished (full or partial coverage). Plan is created or
+            reused; report lists filled and unfilled eligible days.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenerateWeeklyMealsResponse"
+        "400":
+          description: >
+            Validation failure (missing/non-Monday weekStartDate, invalid mode)
+            or zero FamilyMembers (GENERATION_NO_PREFERENCES)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: >
+            Would create a new plan but household already at 104
+            (WEEKLY_PLAN_LIBRARY_FULL)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /weekly-plans/{weeklyPlanId}/slots/{day}/status:
+    parameters:
+      - $ref: "#/components/parameters/WeeklyPlanId"
+      - $ref: "#/components/parameters/Day"
+    put:
+      operationId: setWeeklyPlanSlotStatusWithAlternative
+      summary: >
+        Set slot status. When status is rejected, automatically attempts one
+        preference-safe alternative; on success the day becomes pending with
+        the new Recipe.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SetSlotStatusRequest"
+      responses:
+        "200":
+          description: >
+            Updated plan. When requested status was rejected, alternativeOutcome
+            reports whether an alternative was applied.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SetSlotStatusResponse"
+        "400":
+          description: Empty slot status change or invalid status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Weekly plan not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+components:
+  parameters:
+    WeeklyPlanId:
+      name: weeklyPlanId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    Day:
+      name: day
+      in: path
+      required: true
+      schema:
+        $ref: "#/components/schemas/Weekday"
+  schemas:
+    Weekday:
+      type: string
+      enum:
+        - monday
+        - tuesday
+        - wednesday
+        - thursday
+        - friday
+        - saturday
+        - sunday
+    SlotStatus:
+      type: string
+      enum:
+        - pending
+        - approved
+        - rejected
+    GenerationMode:
+      type: string
+      enum:
+        - fill-empty
+        - regenerate-non-approved
+      default: fill-empty
+    UnfilledReason:
+      type: string
+      enum:
+        - NO_SAFE_CANDIDATES
+    GenerateWeeklyMealsRequest:
+      type: object
+      required: [weekStartDate]
+      additionalProperties: false
+      properties:
+        weekStartDate:
+          type: string
+          format: date
+          description: Must be a Monday (UTC calendar); past/current/future allowed
+        mode:
+          $ref: "#/components/schemas/GenerationMode"
+          description: >
+            fill-empty targets empty days only; regenerate-non-approved refreshes
+            empty, pending, and rejected days. Always all eligible days (no
+            day-subset).
+    MealSlot:
+      type: object
+      required: [day, recipeId, recipeTitle, status]
+      properties:
+        day:
+          $ref: "#/components/schemas/Weekday"
+        recipeId:
+          type: ["string", "null"]
+          format: uuid
+        recipeTitle:
+          type: ["string", "null"]
+        status:
+          oneOf:
+            - $ref: "#/components/schemas/SlotStatus"
+            - type: "null"
+    WeeklyPlan:
+      type: object
+      required:
+        - id
+        - householdId
+        - weekStartDate
+        - slots
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        householdId:
+          type: string
+          format: uuid
+        weekStartDate:
+          type: string
+          format: date
+        slots:
+          type: array
+          minItems: 7
+          maxItems: 7
+          items:
+            $ref: "#/components/schemas/MealSlot"
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    GenerationReport:
+      type: object
+      required: [mode, filledDays, unfilledDays]
+      properties:
+        mode:
+          $ref: "#/components/schemas/GenerationMode"
+        filledDays:
+          type: array
+          items:
+            $ref: "#/components/schemas/Weekday"
+          description: Days written in this run
+        unfilledDays:
+          type: array
+          items:
+            type: object
+            required: [day, reason]
+            additionalProperties: false
+            properties:
+              day:
+                $ref: "#/components/schemas/Weekday"
+              reason:
+                $ref: "#/components/schemas/UnfilledReason"
+    GenerateWeeklyMealsResponse:
+      type: object
+      required: [plan, report]
+      additionalProperties: false
+      properties:
+        plan:
+          $ref: "#/components/schemas/WeeklyPlan"
+        report:
+          $ref: "#/components/schemas/GenerationReport"
+    SetSlotStatusRequest:
+      type: object
+      required: [status]
+      additionalProperties: false
+      properties:
+        status:
+          $ref: "#/components/schemas/SlotStatus"
+    AlternativeOutcome:
+      type: object
+      required: [applied]
+      additionalProperties: false
+      properties:
+        applied:
+          type: boolean
+        reason:
+          type: string
+          enum:
+            - NO_SAFE_ALTERNATIVE
+          description: Present when applied is false
+    SetSlotStatusResponse:
+      allOf:
+        - $ref: "#/components/schemas/WeeklyPlan"
+        - type: object
+          properties:
+            alternativeOutcome:
+              $ref: "#/components/schemas/AlternativeOutcome"
+              description: >
+                Present when requested status was rejected; omitted for
+                pending/approved status updates
+    Error:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: string
+          enum:
+            - VALIDATION_ERROR
+            - GENERATION_NO_PREFERENCES
+            - WEEKLY_PLAN_LIBRARY_FULL
+            - NOT_FOUND
+        message:
+          type: string

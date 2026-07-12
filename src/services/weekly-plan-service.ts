@@ -74,6 +74,45 @@ export class WeeklyPlanService {
     return this.toWeeklyPlan(plan);
   }
 
+  /** Returns the household plan for a week-start, or null if none. */
+  findByWeekStart(weekStartDate: string): WeeklyPlan | null {
+    const row = this.db
+      .select()
+      .from(weeklyPlans)
+      .where(
+        and(
+          eq(weeklyPlans.householdId, this.householdId),
+          eq(weeklyPlans.weekStartDate, weekStartDate),
+        ),
+      )
+      .get();
+    return row ? this.toWeeklyPlan(row) : null;
+  }
+
+  /**
+   * Recipe IDs appearing on plans whose week_start is in
+   * [windowStart, exclusiveEnd) for this household.
+   */
+  recipeIdsInWeekStartRange(windowStart: string, exclusiveEnd: string): Set<string> {
+    const plans = this.db
+      .select({ id: weeklyPlans.id, weekStartDate: weeklyPlans.weekStartDate })
+      .from(weeklyPlans)
+      .where(eq(weeklyPlans.householdId, this.householdId))
+      .all()
+      .filter((p) => p.weekStartDate >= windowStart && p.weekStartDate < exclusiveEnd);
+
+    const ids = new Set<string>();
+    for (const plan of plans) {
+      const slots = this.db
+        .select({ recipeId: mealSlots.recipeId })
+        .from(mealSlots)
+        .where(eq(mealSlots.weeklyPlanId, plan.id))
+        .all();
+      for (const s of slots) ids.add(s.recipeId);
+    }
+    return ids;
+  }
+
   createWeeklyPlan(input: WeeklyPlanCreateInput): WeeklyPlan {
     const weekStartDate = assertMondayWeekStart(input.weekStartDate);
     const slots = normalizeCreateSlots(input.slots);

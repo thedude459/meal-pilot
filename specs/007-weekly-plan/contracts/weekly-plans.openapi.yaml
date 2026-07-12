@@ -9,8 +9,9 @@ info:
     (default pending on assign/replace). Same Recipe may appear on multiple
     days. Slot edits are per-slot assign/replace, clear, and status actions.
     Recipe library delete is blocked while a slot references that Recipe
-    (RECIPE_IN_USE). GenerateWeeklyMeals, alternative suggestions, multi-meal
-    types per day, and BuildGroceryList are out of scope.
+    (RECIPE_IN_USE). GenerateWeeklyMeals is delivered in feature 008
+    (`POST /weekly-plans/generate` + reject→alternative). Multi-meal types per
+    day and BuildGroceryList remain out of scope here.
 servers:
   - url: http://localhost:3000
     description: Local development
@@ -165,7 +166,10 @@ paths:
     put:
       operationId: setWeeklyPlanSlotStatus
       summary: >
-        Set approval status on a filled slot only (does not change Recipe)
+        Set approval status on a filled slot only. When status is rejected,
+        GenerateWeeklyMeals (008) automatically attempts one preference-safe
+        alternative; see specs/008-generate-weekly-meals/contracts/generate-weekly-meals.openapi.yaml
+        for alternativeOutcome on the response.
       requestBody:
         required: true
         content:
