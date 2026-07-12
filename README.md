@@ -32,6 +32,10 @@ Household shopping list: one GroceryItem line per catalog Ingredient with quanti
 
 Household weekly meal plans for a Monday week-start with up to seven day slots (one meal per day), Recipe assignment, and pending/approved/rejected status via per-slot actions. Recipe delete is blocked while slotted. See [specs/007-weekly-plan/quickstart.md](specs/007-weekly-plan/quickstart.md).
 
+### Generate Weekly Meals (`008`)
+
+Preference-aware library-only generation into WeeklyPlan (`POST /weekly-plans/generate` with `fill-empty` or `regenerate-non-approved`). Rejecting a slot auto-applies one alternative when available. AI recipe creation and BuildGroceryList remain deferred. See [specs/008-generate-weekly-meals/quickstart.md](specs/008-generate-weekly-meals/quickstart.md).
+
 ### Quick start
 
 ```bash
@@ -49,6 +53,7 @@ API: `http://localhost:3000`
 - Pantry item smoke: [specs/005-pantry-item/quickstart.md](specs/005-pantry-item/quickstart.md)
 - Grocery item smoke: [specs/006-grocery-item/quickstart.md](specs/006-grocery-item/quickstart.md)
 - Weekly plan smoke: [specs/007-weekly-plan/quickstart.md](specs/007-weekly-plan/quickstart.md)
+- Generate weekly meals smoke: [specs/008-generate-weekly-meals/quickstart.md](specs/008-generate-weekly-meals/quickstart.md)
 
 ```bash
 npm test
@@ -57,5 +62,5 @@ npm test
 ### Speckit docs
 
 - Constitution: `.specify/memory/constitution.md`
-- Current plan: `specs/007-weekly-plan/plan.md`
-- Weekly plan tasks: `specs/007-weekly-plan/tasks.md`
+- Current plan: `specs/008-generate-weekly-meals/plan.md`
+- Generate weekly meals tasks: `specs/008-generate-weekly-meals/tasks.md`

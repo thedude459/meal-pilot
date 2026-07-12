@@ -22,6 +22,7 @@ export const ErrorCode = {
   WEEKLY_PLAN_CONFLICT: "WEEKLY_PLAN_CONFLICT",
   WEEKLY_PLAN_LIBRARY_FULL: "WEEKLY_PLAN_LIBRARY_FULL",
   RECIPE_IN_USE: "RECIPE_IN_USE",
+  GENERATION_NO_PREFERENCES: "GENERATION_NO_PREFERENCES",
   NOT_FOUND: "NOT_FOUND",
 } as const;
 
@@ -175,4 +176,10 @@ export function recipeInUseError(
   message = "Recipe is referenced by a weekly plan slot; clear the slot or delete the plan first",
 ): DomainError {
   return new DomainError(ErrorCode.RECIPE_IN_USE, message, 409);
+}
+
+export function generationNoPreferencesError(
+  message = "At least one family member is required to generate weekly meals",
+): DomainError {
+  return new DomainError(ErrorCode.GENERATION_NO_PREFERENCES, message, 400);
 }

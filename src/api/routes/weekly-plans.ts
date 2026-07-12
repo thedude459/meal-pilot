@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { z } from "zod";
 import { validationError } from "../../domain/errors.js";
 import { WEEKDAYS, SLOT_STATUSES } from "../../domain/weekly-plan.js";
+import type { MealSuggestionService } from "../../services/meal-suggestion-service.js";
 import type { WeeklyPlanService } from "../../services/weekly-plan-service.js";
 
 const weekdaySchema = z.enum(WEEKDAYS);
@@ -41,7 +42,10 @@ function parseDayParam(day: string) {
   return parsed.data;
 }
 
-export function createWeeklyPlanRoutes(service: WeeklyPlanService) {
+export function createWeeklyPlanRoutes(
+  service: WeeklyPlanService,
+  suggestions?: MealSuggestionService,
+) {
   const routes = new Hono();
 
   routes.get("/weekly-plans", (c) => {
@@ -97,6 +101,12 @@ export function createWeeklyPlanRoutes(service: WeeklyPlanService) {
     if (!parsed.success) {
       throw validationError("Invalid set slot status payload");
     }
+
+    if (parsed.data.status === "rejected" && suggestions) {
+      const result = suggestions.rejectWithAlternative(c.req.param("weeklyPlanId"), day);
+      return c.json(result);
+    }
+
     const plan = service.setSlotStatus(
       c.req.param("weeklyPlanId"),
       day,

@@ -88,6 +88,16 @@ export class RecipeService {
     };
   }
 
+  /** Full recipe rows for meal suggestion / planning consumers. */
+  listFullRecipes(): Recipe[] {
+    const rows = this.db
+      .select()
+      .from(recipes)
+      .where(eq(recipes.householdId, this.householdId))
+      .all();
+    return rows.map(recipeFromRow);
+  }
+
   getRecipe(recipeId: string): Recipe {
     const row = this.db
       .select()
