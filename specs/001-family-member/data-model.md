@@ -62,7 +62,9 @@ Implicit single-household context for v1 (no multi-household switching).
 **Consumer resolution (pure helpers; do not mutate stored lists)**:
 1. `hardRestrictions` = dietaryRestrictionIds (hard exclusions for planning; FR-013)
 2. If a like label matches a dislike label (case-insensitive), treat as dislike for consumers (FR-014)
-3. If a like conflicts with a hard restriction semantic for planning, restriction wins (FR-011)
+3. Do **not** filter likes against dietary restrictions inside PreferenceProfile;
+   meal-planning consumers MUST apply hard exclusions at meal-matching time
+   (see `002-preference-profile`)
 4. Stored likes/dislikes remain as the organizer entered them
 
 ### DietaryRestriction (catalog)

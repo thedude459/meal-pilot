@@ -3,8 +3,13 @@ info:
   title: Meal Pilot Family Members API
   version: 1.0.0
   description: >
-    Organizer-facing API for household FamilyMember roster and PreferenceProfile
-    management. Single-household local service.
+    Organizer-facing API for household FamilyMember roster management.
+    Preference profile view/replace, effective preferences, label limits,
+    and PREFERENCE_LIMIT errors are defined in
+    specs/002-preference-profile/contracts/preference-profiles.openapi.yaml
+    (authoritative for preference paths). This file retains roster endpoints
+    and a legacy PUT preferences path for backward compatibility with 001.
+    Single-household local service.
 servers:
   - url: http://localhost:3000
     description: Local development
@@ -145,6 +150,10 @@ paths:
     put:
       operationId: replacePreferences
       summary: Replace preference profile (likes, dislikes, dietary restrictions)
+      description: >
+        Legacy replace endpoint from 001. Prefer the Preference Profiles
+        contract in 002 for full request/response and error semantics
+        (including PREFERENCE_LIMIT, GET stored, GET effective).
       requestBody:
         required: true
         content:

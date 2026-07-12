@@ -1,0 +1,193 @@
+openapi: 3.1.0
+info:
+  title: Meal Pilot Preference Profiles API
+  version: 1.0.0
+  description: >
+    Organizer-facing preference profile view/replace and dietary restriction
+    catalog. Builds on Family Member Profiles; does not manage roster lifecycle.
+servers:
+  - url: http://localhost:3000
+    description: Local development
+paths:
+  /dietary-restrictions:
+    get:
+      operationId: listDietaryRestrictions
+      summary: List predefined dietary restriction catalog
+      responses:
+        "200":
+          description: Catalog entries with stable ids and labels
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/DietaryRestriction"
+  /family-members/{memberId}/preferences:
+    parameters:
+      - $ref: "#/components/parameters/MemberId"
+    get:
+      operationId: getPreferences
+      summary: Get stored preference profile for a member
+      responses:
+        "200":
+          description: Stored preferences (may be empty lists)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PreferenceProfile"
+        "404":
+          description: Member not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    put:
+      operationId: replacePreferences
+      summary: Full-replace preference profile (last successful write wins)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReplacePreferencesRequest"
+      responses:
+        "200":
+          description: Normalized preferences after successful replace
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PreferenceProfile"
+        "400":
+          description: >
+            Unknown restriction, label too long, too many likes/dislikes,
+            or invalid payload
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Member not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /family-members/{memberId}/preferences/effective:
+    parameters:
+      - $ref: "#/components/parameters/MemberId"
+    get:
+      operationId: getEffectivePreferences
+      summary: >
+        Consumer-facing effective preferences (dislike-wins likes; hard
+        restrictions). Does not filter likes against dietary restrictions.
+      responses:
+        "200":
+          description: Derived effective preference view
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EffectivePreferenceProfile"
+        "404":
+          description: Member not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+components:
+  parameters:
+    MemberId:
+      name: memberId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+  schemas:
+    DietaryRestriction:
+      type: object
+      required: [id, label]
+      properties:
+        id:
+          type: string
+          examples: [gluten_free]
+        label:
+          type: string
+          examples: [Gluten-free]
+    PreferenceProfile:
+      type: object
+      required: [likes, dislikes, dietaryRestrictionIds]
+      properties:
+        likes:
+          type: array
+          maxItems: 50
+          items:
+            type: string
+            maxLength: 40
+          description: >
+            Normalized free-text likes; blank removed; case-insensitive
+            duplicates collapsed; relative order preserved
+        dislikes:
+          type: array
+          maxItems: 50
+          items:
+            type: string
+            maxLength: 40
+          description: >
+            Normalized free-text dislikes; blank removed; case-insensitive
+            duplicates collapsed; relative order preserved
+        dietaryRestrictionIds:
+          type: array
+          items:
+            type: string
+          description: >
+            Catalog IDs only; duplicates collapsed; first-seen order preserved
+    EffectivePreferenceProfile:
+      type: object
+      required: [effectiveLikes, effectiveDislikes, hardRestrictions]
+      properties:
+        effectiveLikes:
+          type: array
+          items:
+            type: string
+          description: Likes after removing labels that also appear in dislikes
+        effectiveDislikes:
+          type: array
+          items:
+            type: string
+        hardRestrictions:
+          type: array
+          items:
+            type: string
+          description: Dietary restriction IDs for meal-matching hard exclusions
+    ReplacePreferencesRequest:
+      type: object
+      required: [likes, dislikes, dietaryRestrictionIds]
+      properties:
+        likes:
+          type: array
+          items:
+            type: string
+        dislikes:
+          type: array
+          items:
+            type: string
+        dietaryRestrictionIds:
+          type: array
+          items:
+            type: string
+    Error:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: string
+          enum:
+            - VALIDATION_ERROR
+            - UNKNOWN_RESTRICTION
+            - PREFERENCE_LIMIT
+            - NOT_FOUND
+        message:
+          type: string

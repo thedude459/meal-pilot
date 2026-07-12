@@ -13,8 +13,11 @@ import {
   unknownRestrictionError,
 } from "../domain/errors.js";
 import {
-  collapseLabels,
+  assertPreferenceLimits,
   emptyPreferenceProfile,
+  normalizePreferenceInput,
+  toEffectivePreferences,
+  type EffectivePreferenceProfile,
   type PreferenceProfile,
 } from "../domain/preference-profile.js";
 import { DEFAULT_HOUSEHOLD_ID, type AppDatabase } from "../db/client.js";
@@ -171,23 +174,28 @@ export class FamilyMemberService {
     };
   }
 
+  getPreferences(memberId: string): PreferenceProfile {
+    return this.getFamilyMember(memberId).preferences;
+  }
+
+  getEffectivePreferences(memberId: string): EffectivePreferenceProfile {
+    return toEffectivePreferences(this.getPreferences(memberId));
+  }
+
   replacePreferences(
     memberId: string,
     input: { likes: string[]; dislikes: string[]; dietaryRestrictionIds: string[] },
   ): PreferenceProfile {
     this.getFamilyMember(memberId);
 
-    for (const id of input.dietaryRestrictionIds) {
+    const preferences = normalizePreferenceInput(input);
+    assertPreferenceLimits(preferences);
+
+    for (const id of preferences.dietaryRestrictionIds) {
       if (!isKnownDietaryRestriction(id)) {
         throw unknownRestrictionError(id);
       }
     }
-
-    const preferences: PreferenceProfile = {
-      likes: collapseLabels(input.likes),
-      dislikes: collapseLabels(input.dislikes),
-      dietaryRestrictionIds: [...new Set(input.dietaryRestrictionIds)],
-    };
 
     const ts = nowIso();
     this.db
