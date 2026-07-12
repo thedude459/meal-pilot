@@ -1,0 +1,331 @@
+openapi: 3.1.0
+info:
+  title: Meal Pilot Recipes API
+  version: 1.0.0
+  description: >
+    Organizer-facing curated recipe library and ingredient unit catalog.
+    Dietary attribute tags reuse the PreferenceProfile dietary restriction
+    catalog (GET /dietary-restrictions). AI generation is out of scope;
+    created/replaced recipes always have source curated. Shared schema is
+    ready for future RecipeHybridEngine emitters.
+servers:
+  - url: http://localhost:3000
+    description: Local development
+paths:
+  /ingredient-units:
+    get:
+      operationId: listIngredientUnits
+      summary: List predefined ingredient unit catalog
+      responses:
+        "200":
+          description: Unit catalog entries
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/IngredientUnit"
+  /recipes:
+    get:
+      operationId: listRecipes
+      summary: List household recipe library summaries
+      responses:
+        "200":
+          description: Recipes in the household library
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items, maxRecipes]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/RecipeSummary"
+                  maxRecipes:
+                    type: integer
+                    const: 500
+    post:
+      operationId: createRecipe
+      summary: Create a curated recipe (source forced to curated)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpsertRecipeRequest"
+      responses:
+        "201":
+          description: Recipe created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Recipe"
+        "400":
+          description: >
+            Validation failure, unknown unit, unknown dietary tag, or
+            recipe field/count limits (RECIPE_LIMIT) — not library capacity
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: >
+            Household recipe library already at 500 recipes
+            (RECIPE_LIBRARY_FULL)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /recipes/{recipeId}:
+    parameters:
+      - $ref: "#/components/parameters/RecipeId"
+    get:
+      operationId: getRecipe
+      summary: Get full recipe detail (shared hybrid schema)
+      responses:
+        "200":
+          description: Full recipe
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Recipe"
+        "404":
+          description: Recipe not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    put:
+      operationId: replaceRecipe
+      summary: Full-replace recipe fields (last successful write wins; source curated)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpsertRecipeRequest"
+      responses:
+        "200":
+          description: Normalized recipe after successful replace
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Recipe"
+        "400":
+          description: >
+            Validation failure, unknown unit, unknown dietary tag, or
+            recipe field/count limits (RECIPE_LIMIT)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Recipe not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    delete:
+      operationId: deleteRecipe
+      summary: Permanently delete a recipe (client confirms before calling)
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          description: Recipe not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+components:
+  parameters:
+    RecipeId:
+      name: recipeId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+  schemas:
+    IngredientUnit:
+      type: object
+      required: [id, label, kind]
+      properties:
+        id:
+          type: string
+          examples: [cup]
+        label:
+          type: string
+          examples: [cup]
+        kind:
+          type: string
+          enum: [volume, mass, count]
+    IngredientLine:
+      type: object
+      required: [name, quantity, unitId]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 80
+          description: Free-text ingredient name (no shared catalog in v1)
+        quantity:
+          type: number
+          exclusiveMinimum: 0
+          description: Positive decimal quantity (normalized to ≤3 decimal places)
+        unitId:
+          type: string
+          description: Must be a known ingredient unit catalog id
+    RecipeSummary:
+      type: object
+      required: [id, title, source, updatedAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        source:
+          $ref: "#/components/schemas/RecipeSource"
+        servings:
+          type: integer
+          minimum: 1
+          nullable: true
+        updatedAt:
+          type: string
+          format: date-time
+    RecipeSource:
+      type: string
+      enum: [curated, ai]
+      description: >
+        Writes from this API always return curated. ai is reserved for future
+        RecipeHybridEngine emitters sharing this schema.
+    Recipe:
+      type: object
+      required:
+        - id
+        - title
+        - ingredients
+        - instructionSteps
+        - cuisineTags
+        - dietaryAttributeIds
+        - source
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+          maxLength: 120
+        ingredients:
+          type: array
+          minItems: 1
+          maxItems: 60
+          items:
+            $ref: "#/components/schemas/IngredientLine"
+        instructionSteps:
+          type: array
+          minItems: 1
+          maxItems: 40
+          items:
+            type: string
+            minLength: 1
+            maxLength: 2000
+        servings:
+          type: integer
+          minimum: 1
+          nullable: true
+        prepTimeMinutes:
+          type: integer
+          minimum: 0
+          nullable: true
+        cookTimeMinutes:
+          type: integer
+          minimum: 0
+          nullable: true
+        cuisineTags:
+          type: array
+          maxItems: 20
+          items:
+            type: string
+            maxLength: 40
+          description: >
+            Free-text tags; blanks dropped; case-insensitive duplicates
+            collapsed; first-seen order preserved
+        dietaryAttributeIds:
+          type: array
+          items:
+            type: string
+          description: >
+            Same IDs as PreferenceProfile dietary restrictions; duplicates
+            collapsed; first-seen order preserved
+        source:
+          $ref: "#/components/schemas/RecipeSource"
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    UpsertRecipeRequest:
+      type: object
+      required: [title, ingredients, instructionSteps]
+      properties:
+        title:
+          type: string
+        ingredients:
+          type: array
+          items:
+            $ref: "#/components/schemas/IngredientLine"
+        instructionSteps:
+          type: array
+          items:
+            type: string
+        servings:
+          type: integer
+          minimum: 1
+          nullable: true
+        prepTimeMinutes:
+          type: integer
+          minimum: 0
+          nullable: true
+        cookTimeMinutes:
+          type: integer
+          minimum: 0
+          nullable: true
+        cuisineTags:
+          type: array
+          items:
+            type: string
+        dietaryAttributeIds:
+          type: array
+          items:
+            type: string
+          description: PreferenceProfile dietary restriction catalog IDs
+        source:
+          $ref: "#/components/schemas/RecipeSource"
+          description: >
+            Optional on input; ignored if set to ai — server always persists
+            curated for this feature
+    Error:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: string
+          enum:
+            - VALIDATION_ERROR
+            - UNKNOWN_UNIT
+            - UNKNOWN_RESTRICTION
+            - RECIPE_LIMIT
+            - RECIPE_LIBRARY_FULL
+            - NOT_FOUND
+        message:
+          type: string
