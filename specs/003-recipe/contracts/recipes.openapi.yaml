@@ -7,7 +7,9 @@ info:
     Dietary attribute tags reuse the PreferenceProfile dietary restriction
     catalog (GET /dietary-restrictions). AI generation is out of scope;
     created/replaced recipes always have source curated. Shared schema is
-    ready for future RecipeHybridEngine emitters.
+    ready for future RecipeHybridEngine emitters. Recipe delete returns
+    RECIPE_IN_USE (409) while any WeeklyPlan meal slot references the recipe
+    (see 007-weekly-plan).
 servers:
   - url: http://localhost:3000
     description: Local development
@@ -138,6 +140,15 @@ paths:
           description: Deleted
         "404":
           description: Recipe not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: >
+            Recipe still referenced by a WeeklyPlan meal slot (RECIPE_IN_USE);
+            clear or reassign the slot (or delete the plan) first (see
+            007-weekly-plan)
           content:
             application/json:
               schema:
@@ -326,6 +337,7 @@ components:
             - UNKNOWN_RESTRICTION
             - RECIPE_LIMIT
             - RECIPE_LIBRARY_FULL
+            - RECIPE_IN_USE
             - NOT_FOUND
         message:
           type: string
