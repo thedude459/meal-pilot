@@ -127,3 +127,31 @@ export const pantryItems = sqliteTable(
     ),
   }),
 );
+
+export const groceryItems = sqliteTable(
+  "grocery_items",
+  {
+    id: text("id").primaryKey(),
+    householdId: text("household_id")
+      .notNull()
+      .references(() => households.id),
+    ingredientId: text("ingredient_id")
+      .notNull()
+      .references(() => ingredients.id),
+    quantity: real("quantity").notNull(),
+    unitId: text("unit_id").notNull(),
+    checked: integer("checked", { mode: "boolean" }).notNull().default(false),
+    createdAt: text("created_at")
+      .notNull()
+      .default(sql`(datetime('now'))`),
+    updatedAt: text("updated_at")
+      .notNull()
+      .default(sql`(datetime('now'))`),
+  },
+  (table) => ({
+    uniqueIngredientPerHousehold: uniqueIndex("grocery_items_household_ingredient_key").on(
+      table.householdId,
+      table.ingredientId,
+    ),
+  }),
+);

@@ -1,0 +1,305 @@
+openapi: 3.1.0
+info:
+  title: Meal Pilot Grocery Items API
+  version: 1.0.0
+  description: >
+    Organizer-facing household GroceryItem shopping list. Each item is one
+    catalog Ingredient line (1:1 per household) with quantity, unit equal to
+    the Ingredient default unit, and checked (purchased) status. List is
+    grouped by Ingredient shopping category (catalog order; unset → Other,
+    Other last). Units reuse GET /ingredient-units. Categories reuse
+    GET /shopping-categories. Checked status changes only via
+    PUT .../checked. Ingredient catalog delete is blocked while a grocery
+    line exists (INGREDIENT_IN_USE; same as pantry). BuildGroceryList,
+    UpdatePantry, export, and bulk clear are out of scope.
+servers:
+  - url: http://localhost:3000
+    description: Local development
+paths:
+  /grocery-items:
+    get:
+      operationId: listGroceryItems
+      summary: >
+        List household grocery items grouped by shopping category (catalog
+        order; Other last; A–Z within group)
+      responses:
+        "200":
+          description: >
+            Category groups in SHOPPING_CATEGORIES order; empty groups omitted;
+            items within each group sorted case-insensitive A–Z by
+            ingredientDisplayName regardless of checked
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [groups, maxGroceryItems]
+                properties:
+                  groups:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/GroceryCategoryGroup"
+                  maxGroceryItems:
+                    type: integer
+                    const: 500
+    post:
+      operationId: createGroceryItem
+      summary: Create a grocery line for a catalog Ingredient (starts unchecked)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateGroceryItemRequest"
+      responses:
+        "201":
+          description: Grocery item created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GroceryItem"
+        "400":
+          description: >
+            Validation failure (missing required fields or unexpected checked on
+            create), unknown unit, unit mismatch vs Ingredient default
+            (UNIT_MISMATCH), or grocery field limits (GROCERY_LIMIT:
+            non-positive/non-finite quantity)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Ingredient not found in household
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: >
+            Duplicate Ingredient line (GROCERY_INGREDIENT_CONFLICT) or
+            household grocery list already at 500 items (GROCERY_LIST_FULL)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /grocery-items/{groceryItemId}:
+    parameters:
+      - $ref: "#/components/parameters/GroceryItemId"
+    get:
+      operationId: getGroceryItem
+      summary: Get grocery item detail
+      responses:
+        "200":
+          description: Full grocery item
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GroceryItem"
+        "404":
+          description: Grocery item not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    put:
+      operationId: replaceGroceryItem
+      summary: >
+        Full-replace quantity and unit (last successful write wins; checked
+        unchanged; do not include checked or ingredientId)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReplaceGroceryItemRequest"
+      responses:
+        "200":
+          description: Grocery item after successful replace
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GroceryItem"
+        "400":
+          description: >
+            Validation failure (including omitted quantity or unitId, or
+            unexpected checked/ingredientId), unknown unit, unit mismatch
+            (UNIT_MISMATCH), or GROCERY_LIMIT (bad quantity)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Grocery item not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    delete:
+      operationId: deleteGroceryItem
+      summary: Permanently remove a grocery line
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          description: Grocery item not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /grocery-items/{groceryItemId}/checked:
+    parameters:
+      - $ref: "#/components/parameters/GroceryItemId"
+    put:
+      operationId: setGroceryItemChecked
+      summary: >
+        Set purchased (checked) status only; does not change quantity, unit,
+        or Ingredient
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SetGroceryItemCheckedRequest"
+      responses:
+        "200":
+          description: Grocery item after check toggle
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GroceryItem"
+        "400":
+          description: >
+            Validation failure (missing checked or unexpected quantity/unit/
+            ingredientId)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Grocery item not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+components:
+  parameters:
+    GroceryItemId:
+      name: groceryItemId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+  schemas:
+    GroceryItem:
+      type: object
+      required:
+        - id
+        - householdId
+        - ingredientId
+        - ingredientDisplayName
+        - shoppingCategoryId
+        - shoppingCategoryLabel
+        - quantity
+        - unitId
+        - checked
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        householdId:
+          type: string
+          format: uuid
+        ingredientId:
+          type: string
+          format: uuid
+        ingredientDisplayName:
+          type: string
+          description: Current display name of the linked Ingredient
+        shoppingCategoryId:
+          type: string
+          description: >
+            Effective category id from Ingredient shoppingCategoryId, or
+            "other" when unset
+        shoppingCategoryLabel:
+          type: string
+          description: Display label from the shopping-categories catalog
+        quantity:
+          type: number
+          exclusiveMinimum: 0
+          description: Positive; stored to at most 3 decimal places
+        unitId:
+          type: string
+          description: Must equal the linked Ingredient defaultUnitId at write
+        checked:
+          type: boolean
+          description: Purchased flag; changed only via PUT .../checked
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    GroceryCategoryGroup:
+      type: object
+      required: [shoppingCategoryId, shoppingCategoryLabel, items]
+      properties:
+        shoppingCategoryId:
+          type: string
+        shoppingCategoryLabel:
+          type: string
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/GroceryItem"
+    CreateGroceryItemRequest:
+      type: object
+      required: [ingredientId, quantity, unitId]
+      additionalProperties: false
+      properties:
+        ingredientId:
+          type: string
+          format: uuid
+        quantity:
+          type: number
+          exclusiveMinimum: 0
+        unitId:
+          type: string
+          description: Must equal the Ingredient’s defaultUnitId
+      description: >
+        Do not include checked; presence is VALIDATION_ERROR. New items always
+        start unchecked.    ReplaceGroceryItemRequest:
+      type: object
+      required: [quantity, unitId]
+      additionalProperties: false
+      properties:
+        quantity:
+          type: number
+          exclusiveMinimum: 0
+        unitId:
+          type: string
+          description: Must equal the Ingredient’s current defaultUnitId
+    SetGroceryItemCheckedRequest:
+      type: object
+      required: [checked]
+      additionalProperties: false
+      properties:
+        checked:
+          type: boolean
+    Error:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: string
+          enum:
+            - VALIDATION_ERROR
+            - UNKNOWN_UNIT
+            - UNIT_MISMATCH
+            - GROCERY_LIMIT
+            - GROCERY_INGREDIENT_CONFLICT
+            - GROCERY_LIST_FULL
+            - NOT_FOUND
+        message:
+          type: string
