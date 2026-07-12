@@ -1,0 +1,16 @@
+node_modules/
+dist/
+build/
+coverage/
+data/*.sqlite
+data/*.sqlite-*
+*.log
+.env
+.env.*
+!.env.example
+.DS_Store
+Thumbs.db
+*.tmp
+*.swp
+.vscode/
+.idea/
