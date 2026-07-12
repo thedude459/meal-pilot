@@ -72,3 +72,30 @@ export const recipes = sqliteTable("recipes", {
     .notNull()
     .default(sql`(datetime('now'))`),
 });
+
+export const ingredients = sqliteTable(
+  "ingredients",
+  {
+    id: text("id").primaryKey(),
+    householdId: text("household_id")
+      .notNull()
+      .references(() => households.id),
+    displayName: text("display_name").notNull(),
+    displayNameKey: text("display_name_key").notNull(),
+    defaultUnitId: text("default_unit_id").notNull(),
+    shoppingCategoryId: text("shopping_category_id"),
+    aliasesJson: text("aliases_json").notNull().default("[]"),
+    createdAt: text("created_at")
+      .notNull()
+      .default(sql`(datetime('now'))`),
+    updatedAt: text("updated_at")
+      .notNull()
+      .default(sql`(datetime('now'))`),
+  },
+  (table) => ({
+    uniqueNamePerHousehold: uniqueIndex("ingredients_household_name_key").on(
+      table.householdId,
+      table.displayNameKey,
+    ),
+  }),
+);
