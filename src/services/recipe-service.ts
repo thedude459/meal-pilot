@@ -5,6 +5,7 @@ import { recipes } from "../db/schema.js";
 import { notFoundError, recipeLibraryFullError } from "../domain/errors.js";
 import {
   MAX_RECIPES_PER_HOUSEHOLD,
+  normalizeAiRecipeInput,
   normalizeRecipeInput,
   type IngredientLine,
   type Recipe,
@@ -112,6 +113,16 @@ export class RecipeService {
 
   createRecipe(input: RecipeInput): Recipe {
     const fields = normalizeRecipeInput(input);
+    return this.insertRecipe(fields);
+  }
+
+  /** Persist a validated AI recipe (source forced to ai by normalizeAiRecipeInput). */
+  createAiRecipe(input: RecipeInput): Recipe {
+    const fields = normalizeAiRecipeInput(input);
+    return this.insertRecipe(fields);
+  }
+
+  private insertRecipe(fields: ReturnType<typeof normalizeRecipeInput> | ReturnType<typeof normalizeAiRecipeInput>): Recipe {
     const existing = this.db
       .select({ value: count() })
       .from(recipes)
@@ -169,6 +180,34 @@ export class RecipeService {
         cuisineTagsJson: JSON.stringify(fields.cuisineTags),
         dietaryAttributeIdsJson: JSON.stringify(fields.dietaryAttributeIds),
         source: fields.source,
+        updatedAt: now,
+      })
+      .where(and(eq(recipes.id, recipeId), eq(recipes.householdId, this.householdId)))
+      .run();
+
+    return this.getRecipe(recipeId);
+  }
+
+  /** Full-replace an existing AI recipe; preserves source=ai. Target must already be ai. */
+  updateAiRecipe(recipeId: string, input: RecipeInput): Recipe {
+    const existing = this.getRecipe(recipeId);
+    if (existing.source !== "ai") {
+      throw notFoundError("AI recipe not found");
+    }
+    const fields = normalizeAiRecipeInput(input);
+    const now = nowIso();
+    this.db
+      .update(recipes)
+      .set({
+        title: fields.title,
+        ingredientsJson: JSON.stringify(fields.ingredients),
+        instructionStepsJson: JSON.stringify(fields.instructionSteps),
+        servings: fields.servings,
+        prepTimeMinutes: fields.prepTimeMinutes,
+        cookTimeMinutes: fields.cookTimeMinutes,
+        cuisineTagsJson: JSON.stringify(fields.cuisineTags),
+        dietaryAttributeIdsJson: JSON.stringify(fields.dietaryAttributeIds),
+        source: "ai",
         updatedAt: now,
       })
       .where(and(eq(recipes.id, recipeId), eq(recipes.householdId, this.householdId)))

@@ -1,0 +1,132 @@
+# Recipe Hybrid Engine — internal service contract
+# Feature: 012-recipe-hybrid-engine
+# No new HTTP OpenAPI paths. Callers use in-process RecipeHybridService.
+# Curated Recipe HTTP remains specs/003-recipe/contracts/recipes.openapi.yaml
+
+service: RecipeHybridEngine
+version: "1.0.0"
+exposure: internal
+http:
+  newPaths: []
+  consumedBy: []
+  # Future (out of this feature): GenerateWeeklyMeals shortfall → hybridFill
+
+operations:
+  generateRecipe:
+    description: >
+      Generate one preference-safe AI recipe for the household (≤3 attempts),
+      persist with source=ai on success, return result envelope.
+    input:
+      seasonalGuidance: { type: string, required: false }
+      budgetGuidance: { type: string, required: false }
+    output:
+      accepted: { type: array, items: Recipe }
+      requestedCount: { const: 1 }
+      acceptedCount: { type: integer, minimum: 0, maximum: 1 }
+      unmetCount: { type: integer, minimum: 0, maximum: 1 }
+      failures:
+        type: array
+        items:
+          reason:
+            enum:
+              - HYBRID_GENERATION_FAILED
+              - RECIPE_LIBRARY_FULL
+              - NO_SAFE_CANDIDATE_AFTER_RETRIES
+    errors:
+      - code: VALIDATION_ERROR
+      - code: RECIPE_LIBRARY_FULL
+      - code: HYBRID_GENERATION_FAILED
+
+  hybridFill:
+    description: >
+      Request N preference-safe AI recipes. Each slot gets ≤3 generation
+      attempts. Partial success allowed; report accepted vs unmet.
+    input:
+      count: { type: integer, minimum: 1, required: true }
+      seasonalGuidance: { type: string, required: false }
+      budgetGuidance: { type: string, required: false }
+      excludeRecipeIds: { type: array, items: string, required: false }
+    output:
+      accepted: { type: array, items: Recipe }
+      requestedCount: { type: integer }
+      acceptedCount: { type: integer }
+      unmetCount: { type: integer }
+      failures:
+        type: array
+        items:
+          reason:
+            enum:
+              - HYBRID_GENERATION_FAILED
+              - RECIPE_LIBRARY_FULL
+              - NO_SAFE_CANDIDATE_AFTER_RETRIES
+    errors:
+      - code: VALIDATION_ERROR
+
+  substituteIngredient:
+    description: >
+      Substitute exactly one ingredient on a library recipe using a required
+      structured replacement line. Default mode creates a distinct source=ai
+      recipe. Replace-in-place allowed only when target source is already ai.
+      Curated replace-in-place is forbidden. Free-text / generator-invented
+      replacements without structure are out of scope for v1.
+    input:
+      recipeId: { type: string, required: true }
+      ingredientName: { type: string, required: true }
+      replacement:
+        type: object
+        required: true
+        properties:
+          name: { type: string, required: true }
+          quantity: { type: number, required: true }
+          unitId: { type: string, required: true }
+      mode:
+        type: string
+        enum: [distinct, replace-in-place]
+        default: distinct
+      seasonalGuidance: { type: string, required: false }
+      budgetGuidance: { type: string, required: false }
+    output:
+      recipe: Recipe
+      modeApplied: { enum: [distinct, replace-in-place] }
+    errors:
+      - code: NOT_FOUND
+      - code: VALIDATION_ERROR
+      - code: HYBRID_REPLACE_CURATED_FORBIDDEN
+      - code: RECIPE_LIBRARY_FULL
+      - code: HYBRID_GENERATION_FAILED
+
+domainRules:
+  schema: shared Recipe schema; hybrid accept forces source=ai
+  hardFilters:
+    dietary: every household hardRestrictionId must be in recipe.dietaryAttributeIds
+    dislikes: case-insensitive exact equality, token, or contiguous phrase on title + ingredient names
+    reuseFrom: 011-meal-suggestion-engine
+  retry:
+    maxAttemptsPerSlot: 3
+    persistInvalid: false
+  substitution:
+    defaultMode: distinct
+    ingredientsPerRequest: 1
+    replacement: required structured { name, quantity, unitId }
+    freeTextOrGeneratorInventedReplacement: forbidden
+    replaceInPlaceAllowedWhen: target.source == ai
+    replaceInPlaceOnCurated: forbidden
+  softGuidance:
+    seasonal: optional → reflect in cuisineTags after normalize
+    budget: optional → reflect in cuisineTags after normalize
+    neverOverrideHardFilters: true
+  capacity:
+    maxRecipesPerHousehold: 500
+  determinism:
+    validation: required for identical candidate + prefs
+    generation: non-deterministic (port)
+  aiCreation: required (this service)
+  orchestration:
+    generateWeeklyMealsAutoWire: false
+  exposure:
+    organizerHttp: false
+
+behaviorLock:
+  curatedCrudOwner: 003-recipe
+  mealRankingOwner: 011-meal-suggestion-engine
+  intentionalGenerateWeeklyMealsChanges: false
