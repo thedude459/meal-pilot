@@ -23,6 +23,7 @@ export const ErrorCode = {
   WEEKLY_PLAN_LIBRARY_FULL: "WEEKLY_PLAN_LIBRARY_FULL",
   RECIPE_IN_USE: "RECIPE_IN_USE",
   GENERATION_NO_PREFERENCES: "GENERATION_NO_PREFERENCES",
+  BUILD_NO_APPROVED_MEALS: "BUILD_NO_APPROVED_MEALS",
   NOT_FOUND: "NOT_FOUND",
 } as const;
 
@@ -182,4 +183,10 @@ export function generationNoPreferencesError(
   message = "At least one family member is required to generate weekly meals",
 ): DomainError {
   return new DomainError(ErrorCode.GENERATION_NO_PREFERENCES, message, 400);
+}
+
+export function buildNoApprovedMealsError(
+  message = "At least one approved meal is required to build a grocery list",
+): DomainError {
+  return new DomainError(ErrorCode.BUILD_NO_APPROVED_MEALS, message, 400);
 }
