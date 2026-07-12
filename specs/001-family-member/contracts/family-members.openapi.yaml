@@ -1,0 +1,273 @@
+openapi: 3.1.0
+info:
+  title: Meal Pilot Family Members API
+  version: 1.0.0
+  description: >
+    Organizer-facing API for household FamilyMember roster and PreferenceProfile
+    management. Single-household local service.
+servers:
+  - url: http://localhost:3000
+    description: Local development
+paths:
+  /dietary-restrictions:
+    get:
+      operationId: listDietaryRestrictions
+      summary: List predefined dietary restriction catalog
+      responses:
+        "200":
+          description: Catalog entries
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/DietaryRestriction"
+  /family-members:
+    get:
+      operationId: listFamilyMembers
+      summary: List household roster
+      responses:
+        "200":
+          description: Current members
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items, maxMembers]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/FamilyMemberSummary"
+                  maxMembers:
+                    type: integer
+                    const: 12
+    post:
+      operationId: createFamilyMember
+      summary: Add a family member with empty preference profile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateFamilyMemberRequest"
+      responses:
+        "201":
+          description: Member created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FamilyMemberDetail"
+        "400":
+          description: Validation error (empty name or invalid payload)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: Duplicate display name or household at 12-member cap
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /family-members/{memberId}:
+    parameters:
+      - $ref: "#/components/parameters/MemberId"
+    get:
+      operationId: getFamilyMember
+      summary: Get member detail including preference profile
+      responses:
+        "200":
+          description: Member detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FamilyMemberDetail"
+        "404":
+          description: Member not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    patch:
+      operationId: updateFamilyMember
+      summary: Rename a family member
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateFamilyMemberRequest"
+      responses:
+        "200":
+          description: Member updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FamilyMemberDetail"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Member not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: Duplicate display name
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    delete:
+      operationId: deleteFamilyMember
+      summary: Permanently delete member and preference profile
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          description: Member not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /family-members/{memberId}/preferences:
+    parameters:
+      - $ref: "#/components/parameters/MemberId"
+    put:
+      operationId: replacePreferences
+      summary: Replace preference profile (likes, dislikes, dietary restrictions)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReplacePreferencesRequest"
+      responses:
+        "200":
+          description: Preferences saved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PreferenceProfile"
+        "400":
+          description: Invalid restriction IDs or payload
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Member not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+components:
+  parameters:
+    MemberId:
+      name: memberId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+  schemas:
+    DietaryRestriction:
+      type: object
+      required: [id, label]
+      properties:
+        id:
+          type: string
+          examples: [gluten_free]
+        label:
+          type: string
+          examples: [Gluten-free]
+    FamilyMemberSummary:
+      type: object
+      required: [id, displayName]
+      properties:
+        id:
+          type: string
+          format: uuid
+        displayName:
+          type: string
+    PreferenceProfile:
+      type: object
+      required: [likes, dislikes, dietaryRestrictionIds]
+      properties:
+        likes:
+          type: array
+          items:
+            type: string
+        dislikes:
+          type: array
+          items:
+            type: string
+        dietaryRestrictionIds:
+          type: array
+          items:
+            type: string
+          description: Must be subset of dietary restriction catalog IDs
+    FamilyMemberDetail:
+      type: object
+      required: [id, displayName, preferences]
+      properties:
+        id:
+          type: string
+          format: uuid
+        displayName:
+          type: string
+        preferences:
+          $ref: "#/components/schemas/PreferenceProfile"
+    CreateFamilyMemberRequest:
+      type: object
+      required: [displayName]
+      properties:
+        displayName:
+          type: string
+          minLength: 1
+    UpdateFamilyMemberRequest:
+      type: object
+      required: [displayName]
+      properties:
+        displayName:
+          type: string
+          minLength: 1
+    ReplacePreferencesRequest:
+      type: object
+      required: [likes, dislikes, dietaryRestrictionIds]
+      properties:
+        likes:
+          type: array
+          items:
+            type: string
+        dislikes:
+          type: array
+          items:
+            type: string
+        dietaryRestrictionIds:
+          type: array
+          items:
+            type: string
+    Error:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: string
+          enum:
+            - VALIDATION_ERROR
+            - DUPLICATE_NAME
+            - MEMBER_LIMIT
+            - UNKNOWN_RESTRICTION
+            - NOT_FOUND
+        message:
+          type: string
