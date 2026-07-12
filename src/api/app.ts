@@ -1,10 +1,18 @@
 import { Hono } from "hono";
-import { getDb } from "../db/client.js";
+import { createDb, getDb, runMigrations } from "../db/client.js";
 import { FamilyMemberService } from "../services/family-member-service.js";
 import { createFamilyMemberRoutes, mapDomainError } from "./routes/family-members.js";
 
 export function createApp(dbPath?: string) {
-  const { db } = getDb(dbPath);
+  const db =
+    dbPath !== undefined
+      ? (() => {
+          const handle = createDb(dbPath);
+          runMigrations(handle.sqlite);
+          return handle.db;
+        })()
+      : getDb().db;
+
   const service = new FamilyMemberService(db);
   const app = new Hono();
 

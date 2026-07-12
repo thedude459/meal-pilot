@@ -49,8 +49,9 @@ feature
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
 - **Family Preference Priority**: PASS — PreferenceProfile captures likes,
-  dislikes, and hard dietary exclusions; conflict rules (restriction > like;
-  dislike > like) encoded in domain model for consumers.
+  dislikes, and hard dietary exclusions; conflict rules (dislike > like for
+  effective likes; hard restrictions exposed for meal-matching consumers —
+  see `002-preference-profile`) encoded in domain model for consumers.
 - **Balanced Weekly Planning**: N/A — out of scope for this feature.
 - **Automatic Grocery Generation**: N/A — out of scope for this feature.
 - **Pantry-Aware Inventory**: N/A — out of scope for this feature.
