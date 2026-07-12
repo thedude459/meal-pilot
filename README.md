@@ -44,6 +44,10 @@ Preference-aware library-only generation into WeeklyPlan (`POST /weekly-plans/ge
 
 `POST /pantry-items/update` (and `/preview`) confirms checked GroceryItems into pantry stock: optional expired cleanup first (UTC), create or increase PantryItems, remove applied grocery lines, return an `ApplyReport`. See [specs/010-update-pantry/quickstart.md](specs/010-update-pantry/quickstart.md).
 
+### Meal Suggestion Engine (`011`)
+
+Constitution **MealSuggestionEngine** service (internal): preference-safe library ranking/filter and reject→alternative, behavior locked to GenerateWeeklyMeals (`008`). Implementation alias: `meal-suggestion.ts` + `MealSuggestionService`. No standalone suggest HTTP surface — organizers use generate + reject paths. See [specs/011-meal-suggestion-engine/quickstart.md](specs/011-meal-suggestion-engine/quickstart.md).
+
 ### Quick start
 
 ```bash
@@ -64,6 +68,7 @@ API: `http://localhost:3000`
 - Generate weekly meals smoke: [specs/008-generate-weekly-meals/quickstart.md](specs/008-generate-weekly-meals/quickstart.md)
 - Build grocery list smoke: [specs/009-build-grocery-list/quickstart.md](specs/009-build-grocery-list/quickstart.md)
 - Update pantry smoke: [specs/010-update-pantry/quickstart.md](specs/010-update-pantry/quickstart.md)
+- Meal suggestion engine smoke: [specs/011-meal-suggestion-engine/quickstart.md](specs/011-meal-suggestion-engine/quickstart.md)
 
 ```bash
 npm test
@@ -72,5 +77,5 @@ npm test
 ### Speckit docs
 
 - Constitution: `.specify/memory/constitution.md`
-- Current plan: `specs/010-update-pantry/plan.md`
-- Update pantry tasks: `specs/010-update-pantry/tasks.md`
+- Current plan: `specs/011-meal-suggestion-engine/plan.md`
+- Meal suggestion engine tasks: `specs/011-meal-suggestion-engine/tasks.md`

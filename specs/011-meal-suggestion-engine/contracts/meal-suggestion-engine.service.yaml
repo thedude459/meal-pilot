@@ -1,0 +1,93 @@
+# Meal Suggestion Engine — internal service contract
+# Feature: 011-meal-suggestion-engine
+# HTTP OpenAPI for generate/reject remains under
+# specs/008-generate-weekly-meals/contracts/generate-weekly-meals.openapi.yaml
+# This file documents the in-process MealSuggestionEngine surface only.
+
+service: MealSuggestionEngine
+version: "1.0.0"
+exposure: internal
+http:
+  newPaths: []
+  consumedBy:
+    - operationId: generateWeeklyMeals
+      path: POST /weekly-plans/generate
+      feature: 008-generate-weekly-meals
+    - operationId: updateMealSlotStatus
+      path: PUT /weekly-plans/{id}/slots/{day}/status
+      when: status == rejected
+      feature: 008-generate-weekly-meals
+
+operations:
+  generateWeeklyMeals:
+    description: >
+      Load household suggestion context, hard-filter and soft-rank library
+      candidates, greedily assign eligible days for the chosen mode, persist
+      via WeeklyPlanService, return plan + GenerationReport.
+    input:
+      weekStartDate: { type: string, format: date, required: true, constraint: monday-utc }
+      mode:
+        type: string
+        enum: [fill-empty, regenerate-non-approved]
+        default: fill-empty
+    output:
+      plan: WeeklyPlan
+      report:
+        mode: { enum: [fill-empty, regenerate-non-approved] }
+        filledDays: { type: array, items: weekday }
+        unfilledDays:
+          type: array
+          items:
+            day: weekday
+            reason: { enum: [NO_SAFE_CANDIDATES] }
+    errors:
+      - code: VALIDATION_ERROR
+        http: 400
+      - code: GENERATION_NO_PREFERENCES
+        http: 400
+        when: zero FamilyMembers
+      - code: WEEKLY_PLAN_LIBRARY_FULL
+        http: 409
+        when: create plan would exceed 104
+
+  rejectWithAlternative:
+    description: >
+      For a filled slot reject, pick one preference-safe alternative excluding
+      the current recipeId (rotation soft-relax allowed). On success assign
+      pending replacement; on failure leave rejected with prior recipe.
+    input:
+      planId: { type: string, required: true }
+      day: { type: weekday, required: true }
+    output:
+      plan: WeeklyPlan
+      alternativeOutcome:
+        oneOf:
+          - { applied: true }
+          - { applied: false, reason: NO_SAFE_ALTERNATIVE }
+    errors:
+      - code: NOT_FOUND
+        http: 404
+      - code: VALIDATION_ERROR
+        http: 400
+
+domainRules:
+  hardFilters:
+    dietary: every household hardRestrictionId must be in recipe.dietaryAttributeIds
+    dislikes: case-insensitive exact equality, token, or contiguous phrase on title + ingredient names
+  softScores:
+    likes: +2 per match
+    pantry: +1 * (matchedPantryNames / ingredientCount)
+    timing: max(0, 120 - prepPlusCookTotal) / 120
+    cuisineVariety: +0.5 if first cuisine tag unused in week
+    rotationPenalty: -5 if recipe in target week or prior 14 days
+  softRelax: rotation exclusions only
+  tieBreak: score descending, then recipeId ascending
+  determinism: required for identical snapshots
+  aiCreation: forbidden
+
+# prepPlusCookTotal = (prepTimeMinutes ?? 0) + (cookTimeMinutes ?? 0) when either
+# timing field is present; missing both → timing bonus 0 (see 008 research).
+
+behaviorLock:
+  sourceFeature: 008-generate-weekly-meals
+  intentionalRankingChanges: false

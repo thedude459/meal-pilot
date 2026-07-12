@@ -1,3 +1,14 @@
+/**
+ * MealSuggestionEngine — Speckit feature `011-meal-suggestion-engine`.
+ *
+ * Constitution service name: MealSuggestionEngine.
+ * Behavior locked to GenerateWeeklyMeals (`008`) library-only ranking/filter
+ * rules (no intentional score-weight or hard-filter changes in `011`).
+ *
+ * Pure match / filter / rank / assign / alternative helpers. Persistence and
+ * HTTP live in MealSuggestionService + `008` routes (internal-only engine;
+ * no standalone suggest surface).
+ */
 import type { PreferenceProfile } from "./preference-profile.js";
 import type { Recipe } from "./recipe.js";
 import { WEEKDAYS, type MealSlotView, type SlotStatus, type Weekday } from "./weekly-plan.js";
@@ -5,6 +16,7 @@ import { WEEKDAYS, type MealSlotView, type SlotStatus, type Weekday } from "./we
 export const GENERATION_MODES = ["fill-empty", "regenerate-non-approved"] as const;
 export type GenerationMode = (typeof GENERATION_MODES)[number];
 
+/** Unfilled-day reason per MealSuggestionEngine service contract. */
 export type UnfilledReason = "NO_SAFE_CANDIDATES";
 
 export type GenerationReport = {
@@ -13,6 +25,7 @@ export type GenerationReport = {
   unfilledDays: Array<{ day: Weekday; reason: UnfilledReason }>;
 };
 
+/** Reject→alternative outcome per MealSuggestionEngine service contract. */
 export type AlternativeOutcome =
   | { applied: true }
   | { applied: false; reason: "NO_SAFE_ALTERNATIVE" };

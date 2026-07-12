@@ -4,10 +4,13 @@ import {
   assignDaysGreedy,
   buildGenerationReport,
   eligibleDays,
+  GENERATION_MODES,
   isRecipeHardSafe,
   labelMatchesRecipe,
   matchesPhraseOrToken,
   pickAlternative,
+  pickBestCandidate,
+  rotationWindowStart,
   scoreCandidate,
   type CandidateRecipe,
   type HouseholdPreferenceAggregate,
@@ -27,7 +30,7 @@ function recipe(
   };
 }
 
-describe("meal-suggestion domain", () => {
+describe("meal-suggestion domain (MealSuggestionEngine / 011)", () => {
   it("matchesPhraseOrToken: equality, token, and contiguous phrase", () => {
     expect(matchesPhraseOrToken("Anchovy", "anchovy fillets")).toBe(true);
     expect(matchesPhraseOrToken("green beans", "Fresh Green Beans")).toBe(true);
@@ -82,6 +85,21 @@ describe("meal-suggestion domain", () => {
     expect(isRecipeHardSafe(r, prefs)).toBe(false);
   });
 
+  it("empty/whitespace dislike does not exclude any recipe", () => {
+    const r = recipe({
+      id: "a",
+      title: "Salad",
+      ingredientNames: ["Tomato"],
+      dietaryAttributeIds: [],
+    });
+    const prefs: HouseholdPreferenceAggregate = {
+      hardRestrictionIds: [],
+      dislikes: ["", "   "],
+      likes: [],
+    };
+    expect(isRecipeHardSafe(r, prefs)).toBe(true);
+  });
+
   it("aggregatePreferences unions and dislike-wins over likes", () => {
     const agg = aggregatePreferences([
       { likes: ["chicken"], dislikes: ["anchovy"], dietaryRestrictionIds: ["gluten_free"] },
@@ -119,6 +137,42 @@ describe("meal-suggestion domain", () => {
     ]);
   });
 
+  it("rotationWindowStart is target week minus 14 days", () => {
+    expect(rotationWindowStart("2026-07-13")).toBe("2026-06-29");
+  });
+
+  it("scoreCandidate locked weights: likes +2, pantry ratio, timing, cuisine +0.5", () => {
+    const prefs: HouseholdPreferenceAggregate = {
+      hardRestrictionIds: [],
+      dislikes: [],
+      likes: ["chicken"],
+    };
+    const baseCtx = {
+      prefs,
+      pantryNames: ["Chicken thighs"],
+      weekAssignedIds: new Set<string>(),
+      recentRecipeIds: new Set<string>(),
+      weekCuisines: new Set<string>(),
+      hardExcludeRotation: false,
+    };
+    const liked = recipe({
+      id: "b",
+      title: "Sheet-pan chicken",
+      ingredientNames: ["Chicken thighs"],
+      prepTimeMinutes: 10,
+      cookTimeMinutes: 20,
+      cuisineTags: ["mexican"],
+    });
+    // likes +2, pantry 1.0, timing max(0,120-30)/120 = 0.75, cuisine +0.5 → 4.25
+    expect(scoreCandidate(liked, baseCtx)).toBeCloseTo(4.25, 5);
+
+    const rotated = scoreCandidate(liked, {
+      ...baseCtx,
+      weekAssignedIds: new Set(["b"]),
+    });
+    expect(rotated).toBeCloseTo(4.25 - 5, 5);
+  });
+
   it("scoreCandidate boosts likes and pantry; timing prefers quicker", () => {
     const prefs: HouseholdPreferenceAggregate = {
       hardRestrictionIds: [],
@@ -150,6 +204,38 @@ describe("meal-suggestion domain", () => {
     const sLiked = scoreCandidate(liked, ctx)!;
     const sOther = scoreCandidate(other, ctx)!;
     expect(sLiked).toBeGreaterThan(sOther);
+  });
+
+  it("missing pantry ingredients never hard-block; empty pantry yields no pantry boost", () => {
+    const prefs: HouseholdPreferenceAggregate = {
+      hardRestrictionIds: [],
+      dislikes: [],
+      likes: [],
+    };
+    const r = recipe({
+      id: "a",
+      title: "Tofu bowl",
+      ingredientNames: ["Tofu"],
+    });
+    const withPantry = scoreCandidate(r, {
+      prefs,
+      pantryNames: ["Chicken"],
+      weekAssignedIds: new Set(),
+      recentRecipeIds: new Set(),
+      weekCuisines: new Set(),
+      hardExcludeRotation: false,
+    });
+    const emptyPantry = scoreCandidate(r, {
+      prefs,
+      pantryNames: [],
+      weekAssignedIds: new Set(),
+      recentRecipeIds: new Set(),
+      weekCuisines: new Set(),
+      hardExcludeRotation: false,
+    });
+    expect(withPantry).not.toBeNull();
+    expect(emptyPantry).not.toBeNull();
+    expect(withPantry).toBe(emptyPantry);
   });
 
   it("assignDaysGreedy soft-relaxes rotation when needed; builds report", () => {
@@ -203,5 +289,84 @@ describe("meal-suggestion domain", () => {
       weekCuisines: new Set(),
     });
     expect(alt?.id).toBe("bbb");
+  });
+
+  it("pickAlternative returns null when no safe alternative remains", () => {
+    const prefs: HouseholdPreferenceAggregate = {
+      hardRestrictionIds: [],
+      dislikes: [],
+      likes: [],
+    };
+    const only = recipe({ id: "aaa", title: "A" });
+    const alt = pickAlternative({
+      safeCandidates: [only],
+      excludeRecipeId: "aaa",
+      prefs,
+      pantryNames: [],
+      weekAssignedIds: new Set(["aaa"]),
+      recentRecipeIds: new Set(),
+      weekCuisines: new Set(),
+    });
+    expect(alt).toBeNull();
+  });
+
+  it("deterministic tie-break: equal scores pick lower recipeId", () => {
+    const prefs: HouseholdPreferenceAggregate = {
+      hardRestrictionIds: [],
+      dislikes: [],
+      likes: [],
+    };
+    const ctx = {
+      prefs,
+      pantryNames: [] as string[],
+      weekAssignedIds: new Set<string>(),
+      recentRecipeIds: new Set<string>(),
+      weekCuisines: new Set<string>(),
+      hardExcludeRotation: false,
+    };
+    const a = recipe({ id: "aaa", title: "A" });
+    const b = recipe({ id: "bbb", title: "B" });
+    expect(pickBestCandidate([b, a], ctx)?.id).toBe("aaa");
+    expect(pickBestCandidate([a, b], ctx)?.id).toBe("aaa");
+  });
+
+  it("identical inputs yield identical greedy assignments", () => {
+    const prefs: HouseholdPreferenceAggregate = {
+      hardRestrictionIds: [],
+      dislikes: [],
+      likes: ["chicken"],
+    };
+    const candidates = [
+      recipe({
+        id: "r2",
+        title: "Chicken bowl",
+        ingredientNames: ["Chicken"],
+        cuisineTags: ["a"],
+      }),
+      recipe({
+        id: "r1",
+        title: "Tofu bowl",
+        ingredientNames: ["Tofu"],
+        cuisineTags: ["b"],
+      }),
+    ];
+    const input = {
+      days: ["monday", "tuesday"] as const,
+      safeCandidates: candidates,
+      prefs,
+      pantryNames: [] as string[],
+      initialWeekAssignedIds: new Set<string>(),
+      recentRecipeIds: new Set<string>(),
+      initialWeekCuisines: new Set<string>(),
+    };
+    const first = assignDaysGreedy({ ...input, days: [...input.days] });
+    const second = assignDaysGreedy({ ...input, days: [...input.days] });
+    expect([...first.assignments.entries()].map(([d, r]) => [d, r.id])).toEqual(
+      [...second.assignments.entries()].map(([d, r]) => [d, r.id]),
+    );
+  });
+
+  it("GENERATION_MODES match service contract", () => {
+    expect([...GENERATION_MODES]).toEqual(["fill-empty", "regenerate-non-approved"]);
   });
 });
