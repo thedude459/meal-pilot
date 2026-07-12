@@ -150,6 +150,14 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+        "409":
+          description: >
+            Ingredient still referenced by pantry stock (INGREDIENT_IN_USE);
+            remove the PantryItem first (see 005-pantry-item)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
 components:
   parameters:
     IngredientId:
@@ -271,6 +279,7 @@ components:
             - INGREDIENT_LIMIT
             - INGREDIENT_LABEL_CONFLICT
             - INGREDIENT_CATALOG_FULL
+            - INGREDIENT_IN_USE
             - NOT_FOUND
         message:
           type: string
