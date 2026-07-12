@@ -20,6 +20,10 @@ Household curated recipe library with shared hybrid schema (`source: curated | a
 
 Household ingredient catalog with normalized display names, default units (shared with Recipes), optional shopping categories, and aliases for future matching. Recipe free-text lines remain unchanged.
 
+### Pantry Items (`005`)
+
+Household pantry inventory: one stock row per catalog Ingredient with quantity (≤3 decimal places), unit matching the Ingredient default, and optional expiration. Ingredient delete is blocked while stocked. See [specs/005-pantry-item/quickstart.md](specs/005-pantry-item/quickstart.md).
+
 ### Quick start
 
 ```bash
@@ -34,6 +38,7 @@ API: `http://localhost:3000`
 - Preference profile smoke: [specs/002-preference-profile/quickstart.md](specs/002-preference-profile/quickstart.md)
 - Recipe smoke: [specs/003-recipe/quickstart.md](specs/003-recipe/quickstart.md)
 - Ingredient smoke: [specs/004-ingredient/quickstart.md](specs/004-ingredient/quickstart.md)
+- Pantry item smoke: [specs/005-pantry-item/quickstart.md](specs/005-pantry-item/quickstart.md)
 
 ```bash
 npm test

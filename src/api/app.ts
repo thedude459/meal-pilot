@@ -2,9 +2,11 @@ import { Hono } from "hono";
 import { createDb, getDb, runMigrations } from "../db/client.js";
 import { FamilyMemberService } from "../services/family-member-service.js";
 import { IngredientService } from "../services/ingredient-service.js";
+import { PantryItemService } from "../services/pantry-item-service.js";
 import { RecipeService } from "../services/recipe-service.js";
 import { createFamilyMemberRoutes, mapDomainError } from "./routes/family-members.js";
 import { createIngredientRoutes } from "./routes/ingredients.js";
+import { createPantryItemRoutes } from "./routes/pantry-items.js";
 import { createRecipeRoutes } from "./routes/recipes.js";
 
 export function createApp(dbPath?: string) {
@@ -20,6 +22,7 @@ export function createApp(dbPath?: string) {
   const familyService = new FamilyMemberService(db);
   const recipeService = new RecipeService(db);
   const ingredientService = new IngredientService(db);
+  const pantryItemService = new PantryItemService(db);
   const app = new Hono();
 
   app.onError((err, c) => {
@@ -34,5 +37,6 @@ export function createApp(dbPath?: string) {
   app.route("/", createFamilyMemberRoutes(familyService));
   app.route("/", createRecipeRoutes(recipeService));
   app.route("/", createIngredientRoutes(ingredientService));
+  app.route("/", createPantryItemRoutes(pantryItemService));
   return app;
 }

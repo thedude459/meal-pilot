@@ -7,6 +7,7 @@ import {
 } from "./errors.js";
 import { isKnownIngredientUnit } from "./ingredient-units.js";
 import { collapseLabels, collapseRestrictionIds } from "./preference-profile.js";
+import { roundQuantity } from "./quantity.js";
 
 export type RecipeSource = "curated" | "ai";
 
@@ -59,12 +60,7 @@ export const MAX_STEP_LENGTH = 2000;
 export const MAX_CUISINE_TAG_LENGTH = 40;
 export const MAX_CUISINE_TAGS = 20;
 export const MAX_RECIPES_PER_HOUSEHOLD = 500;
-export const QUANTITY_DECIMAL_PLACES = 3;
-
-function roundQuantity(n: number): number {
-  const factor = 10 ** QUANTITY_DECIMAL_PLACES;
-  return Math.round(n * factor) / factor;
-}
+export { QUANTITY_DECIMAL_PLACES } from "./quantity.js";
 
 function normalizeOptionalInt(
   value: number | null | undefined,
