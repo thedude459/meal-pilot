@@ -15,6 +15,9 @@ export const ErrorCode = {
   PANTRY_LIMIT: "PANTRY_LIMIT",
   PANTRY_INVENTORY_FULL: "PANTRY_INVENTORY_FULL",
   PANTRY_INGREDIENT_CONFLICT: "PANTRY_INGREDIENT_CONFLICT",
+  GROCERY_LIMIT: "GROCERY_LIMIT",
+  GROCERY_LIST_FULL: "GROCERY_LIST_FULL",
+  GROCERY_INGREDIENT_CONFLICT: "GROCERY_INGREDIENT_CONFLICT",
   INGREDIENT_IN_USE: "INGREDIENT_IN_USE",
   NOT_FOUND: "NOT_FOUND",
 } as const;
@@ -127,6 +130,24 @@ export function pantryIngredientConflictError(
   message = "Pantry stock for this ingredient already exists",
 ): DomainError {
   return new DomainError(ErrorCode.PANTRY_INGREDIENT_CONFLICT, message, 409);
+}
+
+export function groceryLimitError(
+  message = "Grocery update exceeds quantity field limits",
+): DomainError {
+  return new DomainError(ErrorCode.GROCERY_LIMIT, message, 400);
+}
+
+export function groceryListFullError(
+  message = "Household grocery list limit of 500 reached",
+): DomainError {
+  return new DomainError(ErrorCode.GROCERY_LIST_FULL, message, 409);
+}
+
+export function groceryIngredientConflictError(
+  message = "A grocery line for this ingredient already exists",
+): DomainError {
+  return new DomainError(ErrorCode.GROCERY_INGREDIENT_CONFLICT, message, 409);
 }
 
 export function ingredientInUseError(

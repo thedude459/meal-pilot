@@ -15,6 +15,7 @@ import {
   type NormalizedIngredientFields,
 } from "../domain/ingredient.js";
 import { ingredientCatalogFullError, notFoundError } from "../domain/errors.js";
+import { assertIngredientNotInGrocery } from "./grocery-item-service.js";
 import { assertIngredientNotInPantry } from "./pantry-item-service.js";
 
 function nowIso(): string {
@@ -151,6 +152,7 @@ export class IngredientService {
       throw notFoundError("Ingredient not found");
     }
     assertIngredientNotInPantry(this.db, this.householdId, ingredientId);
+    assertIngredientNotInGrocery(this.db, this.householdId, ingredientId);
     this.db
       .delete(ingredients)
       .where(and(eq(ingredients.id, ingredientId), eq(ingredients.householdId, this.householdId)))

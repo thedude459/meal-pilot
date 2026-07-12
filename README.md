@@ -24,6 +24,10 @@ Household ingredient catalog with normalized display names, default units (share
 
 Household pantry inventory: one stock row per catalog Ingredient with quantity (≤3 decimal places), unit matching the Ingredient default, and optional expiration. Ingredient delete is blocked while stocked. See [specs/005-pantry-item/quickstart.md](specs/005-pantry-item/quickstart.md).
 
+### Grocery Items (`006`)
+
+Household shopping list: one GroceryItem line per catalog Ingredient with quantity (≤3 decimal places), unit matching the Ingredient default, checked (purchased) status via dedicated toggle, and list grouped by shopping-category catalog order. Ingredient delete is blocked while listed. See [specs/006-grocery-item/quickstart.md](specs/006-grocery-item/quickstart.md).
+
 ### Quick start
 
 ```bash
@@ -39,6 +43,7 @@ API: `http://localhost:3000`
 - Recipe smoke: [specs/003-recipe/quickstart.md](specs/003-recipe/quickstart.md)
 - Ingredient smoke: [specs/004-ingredient/quickstart.md](specs/004-ingredient/quickstart.md)
 - Pantry item smoke: [specs/005-pantry-item/quickstart.md](specs/005-pantry-item/quickstart.md)
+- Grocery item smoke: [specs/006-grocery-item/quickstart.md](specs/006-grocery-item/quickstart.md)
 
 ```bash
 npm test
@@ -47,5 +52,5 @@ npm test
 ### Speckit docs
 
 - Constitution: `.specify/memory/constitution.md`
-- Current plan: `specs/004-ingredient/plan.md`
-- Ingredient tasks: `specs/004-ingredient/tasks.md`
+- Current plan: `specs/006-grocery-item/plan.md`
+- Grocery item tasks: `specs/006-grocery-item/tasks.md`
