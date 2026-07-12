@@ -12,6 +12,7 @@ import {
   type RecipeSource,
   type RecipeSummary,
 } from "../domain/recipe.js";
+import { assertRecipeNotInPlan } from "./weekly-plan-service.js";
 
 function nowIso(): string {
   return new Date().toISOString();
@@ -175,6 +176,7 @@ export class RecipeService {
     if (!existing) {
       throw notFoundError("Recipe not found");
     }
+    assertRecipeNotInPlan(this.db, this.householdId, recipeId);
     this.db
       .delete(recipes)
       .where(and(eq(recipes.id, recipeId), eq(recipes.householdId, this.householdId)))

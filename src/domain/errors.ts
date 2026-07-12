@@ -19,6 +19,9 @@ export const ErrorCode = {
   GROCERY_LIST_FULL: "GROCERY_LIST_FULL",
   GROCERY_INGREDIENT_CONFLICT: "GROCERY_INGREDIENT_CONFLICT",
   INGREDIENT_IN_USE: "INGREDIENT_IN_USE",
+  WEEKLY_PLAN_CONFLICT: "WEEKLY_PLAN_CONFLICT",
+  WEEKLY_PLAN_LIBRARY_FULL: "WEEKLY_PLAN_LIBRARY_FULL",
+  RECIPE_IN_USE: "RECIPE_IN_USE",
   NOT_FOUND: "NOT_FOUND",
 } as const;
 
@@ -154,4 +157,22 @@ export function ingredientInUseError(
   message = "Ingredient is referenced by pantry stock; remove the pantry item first",
 ): DomainError {
   return new DomainError(ErrorCode.INGREDIENT_IN_USE, message, 409);
+}
+
+export function weeklyPlanConflictError(
+  message = "A weekly plan for this week-start already exists",
+): DomainError {
+  return new DomainError(ErrorCode.WEEKLY_PLAN_CONFLICT, message, 409);
+}
+
+export function weeklyPlanLibraryFullError(
+  message = "Household weekly plan library limit of 104 reached",
+): DomainError {
+  return new DomainError(ErrorCode.WEEKLY_PLAN_LIBRARY_FULL, message, 409);
+}
+
+export function recipeInUseError(
+  message = "Recipe is referenced by a weekly plan slot; clear the slot or delete the plan first",
+): DomainError {
+  return new DomainError(ErrorCode.RECIPE_IN_USE, message, 409);
 }

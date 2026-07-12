@@ -5,11 +5,13 @@ import { GroceryItemService } from "../services/grocery-item-service.js";
 import { IngredientService } from "../services/ingredient-service.js";
 import { PantryItemService } from "../services/pantry-item-service.js";
 import { RecipeService } from "../services/recipe-service.js";
+import { WeeklyPlanService } from "../services/weekly-plan-service.js";
 import { createFamilyMemberRoutes, mapDomainError } from "./routes/family-members.js";
 import { createGroceryItemRoutes } from "./routes/grocery-items.js";
 import { createIngredientRoutes } from "./routes/ingredients.js";
 import { createPantryItemRoutes } from "./routes/pantry-items.js";
 import { createRecipeRoutes } from "./routes/recipes.js";
+import { createWeeklyPlanRoutes } from "./routes/weekly-plans.js";
 
 export function createApp(dbPath?: string) {
   const db =
@@ -26,6 +28,7 @@ export function createApp(dbPath?: string) {
   const ingredientService = new IngredientService(db);
   const pantryItemService = new PantryItemService(db);
   const groceryItemService = new GroceryItemService(db);
+  const weeklyPlanService = new WeeklyPlanService(db);
   const app = new Hono();
 
   app.onError((err, c) => {
@@ -42,5 +45,6 @@ export function createApp(dbPath?: string) {
   app.route("/", createIngredientRoutes(ingredientService));
   app.route("/", createPantryItemRoutes(pantryItemService));
   app.route("/", createGroceryItemRoutes(groceryItemService));
+  app.route("/", createWeeklyPlanRoutes(weeklyPlanService));
   return app;
 }

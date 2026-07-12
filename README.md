@@ -28,6 +28,10 @@ Household pantry inventory: one stock row per catalog Ingredient with quantity (
 
 Household shopping list: one GroceryItem line per catalog Ingredient with quantity (≤3 decimal places), unit matching the Ingredient default, checked (purchased) status via dedicated toggle, and list grouped by shopping-category catalog order. Ingredient delete is blocked while listed. See [specs/006-grocery-item/quickstart.md](specs/006-grocery-item/quickstart.md).
 
+### Weekly Plans (`007`)
+
+Household weekly meal plans for a Monday week-start with up to seven day slots (one meal per day), Recipe assignment, and pending/approved/rejected status via per-slot actions. Recipe delete is blocked while slotted. See [specs/007-weekly-plan/quickstart.md](specs/007-weekly-plan/quickstart.md).
+
 ### Quick start
 
 ```bash
@@ -44,6 +48,7 @@ API: `http://localhost:3000`
 - Ingredient smoke: [specs/004-ingredient/quickstart.md](specs/004-ingredient/quickstart.md)
 - Pantry item smoke: [specs/005-pantry-item/quickstart.md](specs/005-pantry-item/quickstart.md)
 - Grocery item smoke: [specs/006-grocery-item/quickstart.md](specs/006-grocery-item/quickstart.md)
+- Weekly plan smoke: [specs/007-weekly-plan/quickstart.md](specs/007-weekly-plan/quickstart.md)
 
 ```bash
 npm test
@@ -52,5 +57,5 @@ npm test
 ### Speckit docs
 
 - Constitution: `.specify/memory/constitution.md`
-- Current plan: `specs/006-grocery-item/plan.md`
-- Grocery item tasks: `specs/006-grocery-item/tasks.md`
+- Current plan: `specs/007-weekly-plan/plan.md`
+- Weekly plan tasks: `specs/007-weekly-plan/tasks.md`

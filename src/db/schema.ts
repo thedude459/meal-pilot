@@ -155,3 +155,50 @@ export const groceryItems = sqliteTable(
     ),
   }),
 );
+
+export const weeklyPlans = sqliteTable(
+  "weekly_plans",
+  {
+    id: text("id").primaryKey(),
+    householdId: text("household_id")
+      .notNull()
+      .references(() => households.id),
+    weekStartDate: text("week_start_date").notNull(),
+    createdAt: text("created_at")
+      .notNull()
+      .default(sql`(datetime('now'))`),
+    updatedAt: text("updated_at")
+      .notNull()
+      .default(sql`(datetime('now'))`),
+  },
+  (table) => ({
+    uniqueWeekPerHousehold: uniqueIndex("weekly_plans_household_week_key").on(
+      table.householdId,
+      table.weekStartDate,
+    ),
+  }),
+);
+
+export const mealSlots = sqliteTable(
+  "meal_slots",
+  {
+    id: text("id").primaryKey(),
+    weeklyPlanId: text("weekly_plan_id")
+      .notNull()
+      .references(() => weeklyPlans.id, { onDelete: "cascade" }),
+    day: text("day").notNull(),
+    recipeId: text("recipe_id")
+      .notNull()
+      .references(() => recipes.id),
+    status: text("status").notNull(),
+    createdAt: text("created_at")
+      .notNull()
+      .default(sql`(datetime('now'))`),
+    updatedAt: text("updated_at")
+      .notNull()
+      .default(sql`(datetime('now'))`),
+  },
+  (table) => ({
+    uniqueDayPerPlan: uniqueIndex("meal_slots_plan_day_key").on(table.weeklyPlanId, table.day),
+  }),
+);
