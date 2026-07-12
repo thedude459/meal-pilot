@@ -1,0 +1,246 @@
+openapi: 3.1.0
+info:
+  title: Meal Pilot Update Pantry API
+  version: 1.0.0
+  description: >
+    UpdatePantry workflow (PantryManager). Confirms checked GroceryItems into
+    household PantryItem stock: optional expired cleanup first (UTC), then
+    create or increase pantry quantities, delete applied grocery lines, and
+    return an ApplyReport. Preview projects the same outcomes without mutation.
+    Meal-cook decrement, export, and unit conversion are out of scope.
+servers:
+  - url: http://localhost:3000
+    description: Local development
+paths:
+  /pantry-items/update/preview:
+    post:
+      operationId: previewUpdatePantry
+      summary: Preview UpdatePantry apply without mutating pantry or grocery
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdatePantryRequest"
+      responses:
+        "200":
+          description: >
+            Projection of cleanup-then-apply for current checked lines.
+            Zero checked yields empty applied (may still list projected
+            expired removals when removeExpired is true). No data mutated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UpdatePantryPreviewResponse"
+        "400":
+          description: Invalid request body (e.g. removeExpired not boolean)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /pantry-items/update:
+    post:
+      operationId: confirmUpdatePantry
+      summary: >
+        Confirm UpdatePantry — apply checked groceries to pantry atomically
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdatePantryRequest"
+      responses:
+        "200":
+          description: >
+            Purchases applied; checked grocery lines removed; ApplyReport
+            returned with post-update pantry list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UpdatePantryConfirmResponse"
+        "400":
+          description: >
+            Zero checked lines (UPDATE_PANTRY_NO_CHECKED), unit mismatch
+            (UNIT_MISMATCH), unknown Ingredient or invalid body
+            (VALIDATION_ERROR); no pantry or grocery rows changed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: >
+            Creating pantry rows after cleanup would exceed 500
+            (PANTRY_INVENTORY_FULL); no rows changed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+components:
+  schemas:
+    UpdatePantryRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        removeExpired:
+          type: boolean
+          default: false
+          description: >
+            When true, remove PantryItems with expirationDate before today
+            (UTC) before applying purchases; frees cap slots for creates
+    UpdatePantryConfirmResponse:
+      type: object
+      required: [items, maxPantryItems, report]
+      additionalProperties: false
+      properties:
+        items:
+          type: array
+          description: >
+            Post-confirm pantry list (A–Z by ingredient display name), same
+            fields as GET /pantry-items
+          items:
+            $ref: "#/components/schemas/PantryItem"
+        maxPantryItems:
+          type: integer
+          const: 500
+        report:
+          $ref: "#/components/schemas/ApplyReport"
+    UpdatePantryPreviewResponse:
+      type: object
+      required: [preview]
+      additionalProperties: false
+      properties:
+        preview:
+          $ref: "#/components/schemas/ApplyReport"
+    ApplyReport:
+      type: object
+      required:
+        - removeExpired
+        - applied
+        - expiredRemoved
+        - appliedCount
+        - expiredRemovedCount
+      additionalProperties: false
+      properties:
+        removeExpired:
+          type: boolean
+        applied:
+          type: array
+          items:
+            $ref: "#/components/schemas/AppliedEntry"
+        expiredRemoved:
+          type: array
+          items:
+            $ref: "#/components/schemas/ExpiredRemovedEntry"
+        appliedCount:
+          type: integer
+          minimum: 0
+        expiredRemovedCount:
+          type: integer
+          minimum: 0
+    AppliedEntry:
+      type: object
+      required:
+        - ingredientId
+        - ingredientDisplayName
+        - action
+        - currentQuantity
+        - groceryQuantity
+        - resultingQuantity
+        - unitId
+      additionalProperties: false
+      properties:
+        ingredientId:
+          type: string
+          format: uuid
+        ingredientDisplayName:
+          type: string
+        action:
+          type: string
+          enum: [created, increased]
+        currentQuantity:
+          type: number
+          nullable: true
+          description: >
+            Pantry quantity after projected expired cleanup and before this
+            purchase apply; null when no pantry row remains for the Ingredient
+        groceryQuantity:
+          type: number
+        resultingQuantity:
+          type: number
+        unitId:
+          type: string
+    ExpiredRemovedEntry:
+      type: object
+      required:
+        - pantryItemId
+        - ingredientId
+        - ingredientDisplayName
+        - quantity
+        - unitId
+        - expirationDate
+      additionalProperties: false
+      properties:
+        pantryItemId:
+          type: string
+          format: uuid
+        ingredientId:
+          type: string
+          format: uuid
+        ingredientDisplayName:
+          type: string
+        quantity:
+          type: number
+        unitId:
+          type: string
+        expirationDate:
+          type: string
+          format: date
+    PantryItem:
+      type: object
+      required:
+        - id
+        - ingredientId
+        - ingredientDisplayName
+        - quantity
+        - unitId
+        - expirationDate
+        - createdAt
+        - updatedAt
+      additionalProperties: false
+      properties:
+        id:
+          type: string
+          format: uuid
+        ingredientId:
+          type: string
+          format: uuid
+        ingredientDisplayName:
+          type: string
+        quantity:
+          type: number
+        unitId:
+          type: string
+        expirationDate:
+          type: string
+          format: date
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    Error:
+      type: object
+      required: [code, message]
+      additionalProperties: false
+      properties:
+        code:
+          type: string
+          enum:
+            - VALIDATION_ERROR
+            - UPDATE_PANTRY_NO_CHECKED
+            - UNIT_MISMATCH
+            - PANTRY_INVENTORY_FULL
+        message:
+          type: string

@@ -38,7 +38,11 @@ Preference-aware library-only generation into WeeklyPlan (`POST /weekly-plans/ge
 
 ### Build Grocery List (`009`)
 
-`POST /grocery-items/build` from approved WeeklyPlan meals: match Recipe ingredient names to the catalog, merge quantities, subtract available (non-expired) pantry, sync unchecked GroceryItems, preserve checked lines, and return a `BuildReport`. Export and UpdatePantry remain deferred. See [specs/009-build-grocery-list/quickstart.md](specs/009-build-grocery-list/quickstart.md).
+`POST /grocery-items/build` from approved WeeklyPlan meals: match Recipe ingredient names to the catalog, merge quantities, subtract available (non-expired) pantry, sync unchecked GroceryItems, preserve checked lines, and return a `BuildReport`. Export remains deferred. See [specs/009-build-grocery-list/quickstart.md](specs/009-build-grocery-list/quickstart.md).
+
+### Update Pantry (`010`)
+
+`POST /pantry-items/update` (and `/preview`) confirms checked GroceryItems into pantry stock: optional expired cleanup first (UTC), create or increase PantryItems, remove applied grocery lines, return an `ApplyReport`. See [specs/010-update-pantry/quickstart.md](specs/010-update-pantry/quickstart.md).
 
 ### Quick start
 
@@ -59,6 +63,7 @@ API: `http://localhost:3000`
 - Weekly plan smoke: [specs/007-weekly-plan/quickstart.md](specs/007-weekly-plan/quickstart.md)
 - Generate weekly meals smoke: [specs/008-generate-weekly-meals/quickstart.md](specs/008-generate-weekly-meals/quickstart.md)
 - Build grocery list smoke: [specs/009-build-grocery-list/quickstart.md](specs/009-build-grocery-list/quickstart.md)
+- Update pantry smoke: [specs/010-update-pantry/quickstart.md](specs/010-update-pantry/quickstart.md)
 
 ```bash
 npm test
@@ -67,5 +72,5 @@ npm test
 ### Speckit docs
 
 - Constitution: `.specify/memory/constitution.md`
-- Current plan: `specs/009-build-grocery-list/plan.md`
-- Build grocery list tasks: `specs/009-build-grocery-list/tasks.md`
+- Current plan: `specs/010-update-pantry/plan.md`
+- Update pantry tasks: `specs/010-update-pantry/tasks.md`

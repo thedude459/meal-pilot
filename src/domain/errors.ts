@@ -24,6 +24,7 @@ export const ErrorCode = {
   RECIPE_IN_USE: "RECIPE_IN_USE",
   GENERATION_NO_PREFERENCES: "GENERATION_NO_PREFERENCES",
   BUILD_NO_APPROVED_MEALS: "BUILD_NO_APPROVED_MEALS",
+  UPDATE_PANTRY_NO_CHECKED: "UPDATE_PANTRY_NO_CHECKED",
   NOT_FOUND: "NOT_FOUND",
 } as const;
 
@@ -189,4 +190,10 @@ export function buildNoApprovedMealsError(
   message = "At least one approved meal is required to build a grocery list",
 ): DomainError {
   return new DomainError(ErrorCode.BUILD_NO_APPROVED_MEALS, message, 400);
+}
+
+export function updatePantryNoCheckedError(
+  message = "At least one checked grocery item is required to update the pantry",
+): DomainError {
+  return new DomainError(ErrorCode.UPDATE_PANTRY_NO_CHECKED, message, 400);
 }
