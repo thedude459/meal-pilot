@@ -3,6 +3,7 @@ export const ErrorCode = {
   DUPLICATE_NAME: "DUPLICATE_NAME",
   MEMBER_LIMIT: "MEMBER_LIMIT",
   UNKNOWN_RESTRICTION: "UNKNOWN_RESTRICTION",
+  PREFERENCE_LIMIT: "PREFERENCE_LIMIT",
   NOT_FOUND: "NOT_FOUND",
 } as const;
 
@@ -38,6 +39,12 @@ export function unknownRestrictionError(id: string): DomainError {
     `Unknown dietary restriction: ${id}`,
     400,
   );
+}
+
+export function preferenceLimitError(
+  message = "Preference update exceeds label length or count limits",
+): DomainError {
+  return new DomainError(ErrorCode.PREFERENCE_LIMIT, message, 400);
 }
 
 export function notFoundError(message = "Family member not found"): DomainError {

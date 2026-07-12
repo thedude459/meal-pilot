@@ -75,14 +75,19 @@ extension (additive IDs).
 
 **Decision**: Pure functions on PreferenceProfile for planning consumers:
 `effectiveLikes`, `effectiveDislikes`, `hardRestrictions` — apply
-restriction-over-like and dislike-over-like (case-insensitive label compare)
+dislike-over-like only (case-insensitive label compare). Do **not** resolve
+like↔restriction pairs inside PreferenceProfile; meal-planning consumers apply
+hard exclusions at meal-matching time.
 
-**Rationale**: Encodes FR conflict rules once for future `GenerateWeeklyMeals`
-without embedding planning logic in this feature.
+**Rationale**: Encodes shared preference read rules once for future
+`GenerateWeeklyMeals` without embedding planning or food-ontology logic here.
+
+**Superseded by**: `specs/002-preference-profile/research.md` §2 (2026-07-12
+clarification) — authoritative for like↔restriction precedence.
 
 **Alternatives considered**:
-- Resolve only at meal-plan time — risks inconsistent interpretation across
-  services.
+- Restriction-over-like inside PreferenceProfile helpers — superseded; incomplete
+  without a food ontology and mutates consumer interpretation prematurely.
 - Auto-strip conflicting likes on save — would mutate user intent silently;
   prefer keep stored lists as entered and resolve at read/consume time.
 

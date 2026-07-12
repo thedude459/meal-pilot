@@ -59,6 +59,14 @@ export function createFamilyMemberRoutes(service: FamilyMemberService) {
     return c.body(null, 204);
   });
 
+  routes.get("/family-members/:memberId/preferences/effective", (c) => {
+    return c.json(service.getEffectivePreferences(c.req.param("memberId")));
+  });
+
+  routes.get("/family-members/:memberId/preferences", (c) => {
+    return c.json(service.getPreferences(c.req.param("memberId")));
+  });
+
   routes.put("/family-members/:memberId/preferences", async (c) => {
     const body = await c.req.json().catch(() => null);
     const parsed = replacePreferencesSchema.safeParse(body);

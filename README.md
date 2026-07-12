@@ -2,9 +2,15 @@
 
 Family meal planning & grocery automation — Speckit-driven.
 
-## Current feature: Family Member Profiles
+## Features
 
-Household roster and preference profiles (likes, dislikes, dietary restrictions).
+### Family Member Profiles (`001`)
+
+Household roster (create, list, rename, delete) with auto-created empty preference profiles.
+
+### Preference Profiles (`002`)
+
+View/replace likes, dislikes, and catalog dietary restrictions; effective preference helpers for meal-planning consumers (dislike-wins; hard restrictions at meal match).
 
 ### Quick start
 
@@ -16,10 +22,15 @@ npm run dev
 
 API: `http://localhost:3000`
 
-Full smoke flows: [specs/001-family-member/quickstart.md](specs/001-family-member/quickstart.md)
+- Family member smoke: [specs/001-family-member/quickstart.md](specs/001-family-member/quickstart.md)
+- Preference profile smoke: [specs/002-preference-profile/quickstart.md](specs/002-preference-profile/quickstart.md)
+
+```bash
+npm test
+```
 
 ### Speckit docs
 
 - Constitution: `.specify/memory/constitution.md`
-- Feature plan: `specs/001-family-member/plan.md`
-- Tasks: `specs/001-family-member/tasks.md`
+- Current plan: `specs/002-preference-profile/plan.md`
+- Preference tasks: `specs/002-preference-profile/tasks.md`
