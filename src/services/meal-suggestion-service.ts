@@ -1,3 +1,15 @@
+/**
+ * MealSuggestionEngine facade — Speckit feature `011-meal-suggestion-engine`.
+ *
+ * Constitution / Speckit name: **MealSuggestionEngine**.
+ * Implementation alias: this class (`MealSuggestionService`) + pure domain
+ * helpers in `src/domain/meal-suggestion.ts`.
+ *
+ * Behavior locked to GenerateWeeklyMeals (`008`). Internal-only: organizers
+ * reach the engine via `POST /weekly-plans/generate` and reject→alternative on
+ * `PUT /weekly-plans/{id}/slots/{day}/status` — no standalone suggest HTTP
+ * surface in `011`.
+ */
 import { DEFAULT_HOUSEHOLD_ID, type AppDatabase } from "../db/client.js";
 import { generationNoPreferencesError, validationError } from "../domain/errors.js";
 import {
@@ -59,6 +71,10 @@ export class MealSuggestionService {
     this.weeklyPlans = deps?.weeklyPlans ?? new WeeklyPlanService(db, householdId);
   }
 
+  /**
+   * MealSuggestionEngine operation `generateWeeklyMeals` (service contract).
+   * HTTP consumer: `POST /weekly-plans/generate` (`008`).
+   */
   generateWeeklyMeals(input: GenerateWeeklyMealsInput): GenerateWeeklyMealsResult {
     const weekStartDate = assertMondayWeekStart(input.weekStartDate);
     const mode = this.parseMode(input.mode);
@@ -93,6 +109,11 @@ export class MealSuggestionService {
     return this.runGenerate(plan, mode, days, prefs);
   }
 
+  /**
+   * MealSuggestionEngine operation `rejectWithAlternative` (service contract).
+   * HTTP consumer: `PUT /weekly-plans/{id}/slots/{day}/status` when
+   * `status === "rejected"` (`008`). No separate suggest-only route.
+   */
   rejectWithAlternative(weeklyPlanId: string, day: string): RejectWithAlternativeResult {
     const plan = this.weeklyPlans.getWeeklyPlan(weeklyPlanId);
     const slot = plan.slots.find((s) => s.day === day);

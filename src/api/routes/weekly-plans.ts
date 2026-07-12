@@ -103,6 +103,8 @@ export function createWeeklyPlanRoutes(
     }
 
     if (parsed.data.status === "rejected" && suggestions) {
+      // Transport-only: alternative ranking lives in MealSuggestionEngine
+      // (`MealSuggestionService.rejectWithAlternative`). No duplicated domain logic.
       const result = suggestions.rejectWithAlternative(c.req.param("weeklyPlanId"), day);
       return c.json(result);
     }

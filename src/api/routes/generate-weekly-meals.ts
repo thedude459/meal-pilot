@@ -17,6 +17,8 @@ export function createGenerateWeeklyMealsRoutes(service: MealSuggestionService) 
   const routes = new Hono();
 
   routes.post("/weekly-plans/generate", async (c) => {
+    // Transport-only: ranking/filter live in MealSuggestionEngine
+    // (`MealSuggestionService` / `meal-suggestion.ts`). No duplicated domain logic.
     const body = await c.req.json().catch(() => null);
     const parsed = generateSchema.safeParse(body);
     if (!parsed.success) {
