@@ -13,9 +13,11 @@ import { createGenerateWeeklyMealsRoutes } from "./routes/generate-weekly-meals.
 import { createGroceryItemRoutes } from "./routes/grocery-items.js";
 import { createIngredientRoutes } from "./routes/ingredients.js";
 import { createPantryItemRoutes } from "./routes/pantry-items.js";
+import { createUpdatePantryRoutes } from "./routes/update-pantry.js";
 import { createRecipeRoutes } from "./routes/recipes.js";
 import { createWeeklyPlanRoutes } from "./routes/weekly-plans.js";
 import { GroceryListBuilderService } from "../services/grocery-list-builder-service.js";
+import { PantryManagerService } from "../services/pantry-manager-service.js";
 
 export function createApp(dbPath?: string) {
   const db =
@@ -35,6 +37,7 @@ export function createApp(dbPath?: string) {
   const weeklyPlanService = new WeeklyPlanService(db);
   const mealSuggestionService = new MealSuggestionService(db);
   const groceryListBuilderService = new GroceryListBuilderService(db);
+  const pantryManagerService = new PantryManagerService(db);
   const app = new Hono();
 
   app.onError((err, c) => {
@@ -49,6 +52,8 @@ export function createApp(dbPath?: string) {
   app.route("/", createFamilyMemberRoutes(familyService));
   app.route("/", createRecipeRoutes(recipeService));
   app.route("/", createIngredientRoutes(ingredientService));
+  // Register update before parameterized pantry-item routes for clarity
+  app.route("/", createUpdatePantryRoutes(pantryManagerService));
   app.route("/", createPantryItemRoutes(pantryItemService));
   // Register build before parameterized grocery-item routes for clarity
   app.route("/", createBuildGroceryListRoutes(groceryListBuilderService));
