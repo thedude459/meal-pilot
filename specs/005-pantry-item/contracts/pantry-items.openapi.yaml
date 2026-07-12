@@ -1,0 +1,246 @@
+openapi: 3.1.0
+info:
+  title: Meal Pilot Pantry Items API
+  version: 1.0.0
+  description: >
+    Organizer-facing household PantryItem inventory. Each item stocks one
+    catalog Ingredient (1:1 per household) with quantity, unit equal to the
+    Ingredient default unit, and optional expiration date. Units reuse
+    GET /ingredient-units. Ingredient catalog delete is blocked while stock
+    exists (see Ingredients API INGREDIENT_IN_USE). UpdatePantry and grocery
+    subtraction are out of scope.
+servers:
+  - url: http://localhost:3000
+    description: Local development
+paths:
+  /pantry-items:
+    get:
+      operationId: listPantryItems
+      summary: List household pantry inventory (A–Z by Ingredient display name)
+      responses:
+        "200":
+          description: >
+            Pantry items sorted case-insensitive A–Z by ingredientDisplayName
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items, maxPantryItems]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/PantryItem"
+                  maxPantryItems:
+                    type: integer
+                    const: 500
+    post:
+      operationId: createPantryItem
+      summary: Create pantry stock for a catalog Ingredient
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreatePantryItemRequest"
+      responses:
+        "201":
+          description: Pantry item created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PantryItem"
+        "400":
+          description: >
+            Validation failure (missing required fields), unknown unit,
+            unit mismatch vs Ingredient default (UNIT_MISMATCH), or pantry
+            field limits (PANTRY_LIMIT: non-positive/non-finite quantity or
+            invalid expiration date format)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Ingredient not found in household
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: >
+            Duplicate Ingredient stock (PANTRY_INGREDIENT_CONFLICT) or
+            household pantry already at 500 items (PANTRY_INVENTORY_FULL)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /pantry-items/{pantryItemId}:
+    parameters:
+      - $ref: "#/components/parameters/PantryItemId"
+    get:
+      operationId: getPantryItem
+      summary: Get pantry item detail
+      responses:
+        "200":
+          description: Full pantry item
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PantryItem"
+        "404":
+          description: Pantry item not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    put:
+      operationId: replacePantryItem
+      summary: >
+        Full-replace pantry fields (last successful write wins; quantity,
+        unitId, and expirationDate required; null clears expiration)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReplacePantryItemRequest"
+      responses:
+        "200":
+          description: Pantry item after successful replace
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PantryItem"
+        "400":
+          description: >
+            Validation failure (including omitted quantity, unitId, or
+            expirationDate, or unexpected ingredientId), unknown unit,
+            unit mismatch (UNIT_MISMATCH), or PANTRY_LIMIT (bad quantity /
+            expiration format)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Pantry item not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    delete:
+      operationId: deletePantryItem
+      summary: Permanently remove pantry stock
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          description: Pantry item not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+components:
+  parameters:
+    PantryItemId:
+      name: pantryItemId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+  schemas:
+    PantryItem:
+      type: object
+      required:
+        - id
+        - householdId
+        - ingredientId
+        - ingredientDisplayName
+        - quantity
+        - unitId
+        - expirationDate
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        householdId:
+          type: string
+          format: uuid
+        ingredientId:
+          type: string
+          format: uuid
+        ingredientDisplayName:
+          type: string
+          description: Current display name of the linked Ingredient
+        quantity:
+          type: number
+          exclusiveMinimum: 0
+          description: Positive; stored to at most 3 decimal places
+        unitId:
+          type: string
+          description: Must equal the linked Ingredient defaultUnitId at write
+        expirationDate:
+          type: [string, "null"]
+          format: date
+          description: ISO calendar date YYYY-MM-DD, or null if unset
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    CreatePantryItemRequest:
+      type: object
+      required: [ingredientId, quantity, unitId]
+      properties:
+        ingredientId:
+          type: string
+          format: uuid
+        quantity:
+          type: number
+          exclusiveMinimum: 0
+        unitId:
+          type: string
+          description: Must equal the Ingredient’s defaultUnitId
+        expirationDate:
+          type: [string, "null"]
+          format: date
+          description: >
+            Optional; omit or null to leave unset. Past, today, and future
+            dates are allowed.
+    ReplacePantryItemRequest:
+      type: object
+      required: [quantity, unitId, expirationDate]
+      additionalProperties: false
+      properties:
+        quantity:
+          type: number
+          exclusiveMinimum: 0
+        unitId:
+          type: string
+          description: Must equal the Ingredient’s current defaultUnitId
+        expirationDate:
+          type: [string, "null"]
+          format: date
+          description: >
+            Required on PUT. null clears expiration. Omitting this field is
+            VALIDATION_ERROR. Past, today, and future dates are allowed.
+            Do not include ingredientId; presence is VALIDATION_ERROR.
+    Error:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: string
+          enum:
+            - VALIDATION_ERROR
+            - UNKNOWN_UNIT
+            - UNIT_MISMATCH
+            - PANTRY_LIMIT
+            - PANTRY_INGREDIENT_CONFLICT
+            - PANTRY_INVENTORY_FULL
+            - NOT_FOUND
+        message:
+          type: string

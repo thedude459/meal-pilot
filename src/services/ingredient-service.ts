@@ -15,6 +15,7 @@ import {
   type NormalizedIngredientFields,
 } from "../domain/ingredient.js";
 import { ingredientCatalogFullError, notFoundError } from "../domain/errors.js";
+import { assertIngredientNotInPantry } from "./pantry-item-service.js";
 
 function nowIso(): string {
   return new Date().toISOString();
@@ -149,6 +150,7 @@ export class IngredientService {
     if (!existing) {
       throw notFoundError("Ingredient not found");
     }
+    assertIngredientNotInPantry(this.db, this.householdId, ingredientId);
     this.db
       .delete(ingredients)
       .where(and(eq(ingredients.id, ingredientId), eq(ingredients.householdId, this.householdId)))

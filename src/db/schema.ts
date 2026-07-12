@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { integer, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
+import { integer, real, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
 
 export const households = sqliteTable("households", {
   id: text("id").primaryKey(),
@@ -96,6 +96,34 @@ export const ingredients = sqliteTable(
     uniqueNamePerHousehold: uniqueIndex("ingredients_household_name_key").on(
       table.householdId,
       table.displayNameKey,
+    ),
+  }),
+);
+
+export const pantryItems = sqliteTable(
+  "pantry_items",
+  {
+    id: text("id").primaryKey(),
+    householdId: text("household_id")
+      .notNull()
+      .references(() => households.id),
+    ingredientId: text("ingredient_id")
+      .notNull()
+      .references(() => ingredients.id),
+    quantity: real("quantity").notNull(),
+    unitId: text("unit_id").notNull(),
+    expirationDate: text("expiration_date"),
+    createdAt: text("created_at")
+      .notNull()
+      .default(sql`(datetime('now'))`),
+    updatedAt: text("updated_at")
+      .notNull()
+      .default(sql`(datetime('now'))`),
+  },
+  (table) => ({
+    uniqueIngredientPerHousehold: uniqueIndex("pantry_items_household_ingredient_key").on(
+      table.householdId,
+      table.ingredientId,
     ),
   }),
 );

@@ -11,6 +11,11 @@ export const ErrorCode = {
   INGREDIENT_LIMIT: "INGREDIENT_LIMIT",
   INGREDIENT_CATALOG_FULL: "INGREDIENT_CATALOG_FULL",
   INGREDIENT_LABEL_CONFLICT: "INGREDIENT_LABEL_CONFLICT",
+  UNIT_MISMATCH: "UNIT_MISMATCH",
+  PANTRY_LIMIT: "PANTRY_LIMIT",
+  PANTRY_INVENTORY_FULL: "PANTRY_INVENTORY_FULL",
+  PANTRY_INGREDIENT_CONFLICT: "PANTRY_INGREDIENT_CONFLICT",
+  INGREDIENT_IN_USE: "INGREDIENT_IN_USE",
   NOT_FOUND: "NOT_FOUND",
 } as const;
 
@@ -98,4 +103,34 @@ export function ingredientLabelConflictError(
   message = "Ingredient display name or alias conflicts with an existing label",
 ): DomainError {
   return new DomainError(ErrorCode.INGREDIENT_LABEL_CONFLICT, message, 409);
+}
+
+export function unitMismatchError(
+  message = "Pantry unit must match the ingredient default unit",
+): DomainError {
+  return new DomainError(ErrorCode.UNIT_MISMATCH, message, 400);
+}
+
+export function pantryLimitError(
+  message = "Pantry update exceeds quantity or expiration field limits",
+): DomainError {
+  return new DomainError(ErrorCode.PANTRY_LIMIT, message, 400);
+}
+
+export function pantryInventoryFullError(
+  message = "Household pantry inventory limit of 500 reached",
+): DomainError {
+  return new DomainError(ErrorCode.PANTRY_INVENTORY_FULL, message, 409);
+}
+
+export function pantryIngredientConflictError(
+  message = "Pantry stock for this ingredient already exists",
+): DomainError {
+  return new DomainError(ErrorCode.PANTRY_INGREDIENT_CONFLICT, message, 409);
+}
+
+export function ingredientInUseError(
+  message = "Ingredient is referenced by pantry stock; remove the pantry item first",
+): DomainError {
+  return new DomainError(ErrorCode.INGREDIENT_IN_USE, message, 409);
 }
