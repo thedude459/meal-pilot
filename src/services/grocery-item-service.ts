@@ -195,6 +195,65 @@ export class GroceryItemService {
       .run();
   }
 
+  /**
+   * Apply GroceryListBuilder sync ops in one transaction.
+   * Caller MUST preflight projected count ≤ MAX; this method does not re-check cap mid-flight
+   * beyond asserting projectedCount ≤ max before writing.
+   */
+  applyBuilderSync(ops: {
+    creates: { ingredientId: string; quantity: number; unitId: string }[];
+    updates: { groceryItemId: string; quantity: number; unitId: string }[];
+    deletes: { groceryItemId: string }[];
+    projectedCount: number;
+  }): void {
+    if (ops.projectedCount > MAX_GROCERY_ITEMS_PER_HOUSEHOLD) {
+      throw groceryListFullError();
+    }
+
+    const now = nowIso();
+    this.db.transaction((tx) => {
+      for (const del of ops.deletes) {
+        tx.delete(groceryItems)
+          .where(
+            and(
+              eq(groceryItems.id, del.groceryItemId),
+              eq(groceryItems.householdId, this.householdId),
+            ),
+          )
+          .run();
+      }
+      for (const upd of ops.updates) {
+        tx.update(groceryItems)
+          .set({
+            quantity: upd.quantity,
+            unitId: upd.unitId,
+            updatedAt: now,
+          })
+          .where(
+            and(
+              eq(groceryItems.id, upd.groceryItemId),
+              eq(groceryItems.householdId, this.householdId),
+            ),
+          )
+          .run();
+      }
+      for (const create of ops.creates) {
+        tx.insert(groceryItems)
+          .values({
+            id: randomUUID(),
+            householdId: this.householdId,
+            ingredientId: create.ingredientId,
+            quantity: create.quantity,
+            unitId: create.unitId,
+            checked: false,
+            createdAt: now,
+            updatedAt: now,
+          })
+          .run();
+      }
+    });
+  }
+
   private selectJoined(groceryItemId: string) {
     return this.db
       .select({

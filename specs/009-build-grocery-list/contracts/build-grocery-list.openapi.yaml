@@ -1,0 +1,299 @@
+openapi: 3.1.0
+info:
+  title: Meal Pilot Build Grocery List API
+  version: 1.0.0
+  description: >
+    BuildGroceryList workflow (GroceryListBuilder). Builds or refreshes the
+    household GroceryItem list from approved WeeklyPlan meals for a Monday
+    week-start: match Recipe ingredient names to catalog Ingredients, merge
+    quantities, subtract available (non-expired UTC) pantry stock, sync
+    unchecked grocery lines, preserve checked lines, and return a BuildReport.
+    Export and UpdatePantry are out of scope for this feature.
+servers:
+  - url: http://localhost:3000
+    description: Local development
+paths:
+  /grocery-items/build:
+    post:
+      operationId: buildGroceryList
+      summary: >
+        Build or refresh household grocery items from approved meals for a
+        Monday week-start
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BuildGroceryListRequest"
+      responses:
+        "200":
+          description: >
+            Build finished (full or partial match coverage). Unchecked grocery
+            lines for the merged set are synced; checked lines unchanged;
+            report lists covers, skips, and conflicts.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BuildGroceryListResponse"
+        "400":
+          description: >
+            Validation failure (missing/non-Monday weekStartDate) or plan has
+            zero approved slots (BUILD_NO_APPROVED_MEALS)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: No WeeklyPlan for the given weekStartDate
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: >
+            Applying unchecked sync would exceed 500 grocery items
+            (GROCERY_LIST_FULL); no grocery rows changed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+components:
+  schemas:
+    BuildGroceryListRequest:
+      type: object
+      required: [weekStartDate]
+      additionalProperties: false
+      properties:
+        weekStartDate:
+          type: string
+          format: date
+          description: Monday week-start (YYYY-MM-DD, UTC calendar Monday)
+          example: "2026-07-13"
+    BuildGroceryListResponse:
+      type: object
+      required: [groups, maxGroceryItems, report]
+      additionalProperties: false
+      properties:
+        groups:
+          type: array
+          description: >
+            Post-sync grocery list grouped like GET /grocery-items (category
+            catalog order; Other last; A–Z within group)
+          items:
+            $ref: "#/components/schemas/GroceryCategoryGroup"
+        maxGroceryItems:
+          type: integer
+          const: 500
+        report:
+          $ref: "#/components/schemas/BuildReport"
+    GroceryCategoryGroup:
+      type: object
+      required: [shoppingCategoryId, shoppingCategoryLabel, items]
+      additionalProperties: false
+      properties:
+        shoppingCategoryId:
+          type: string
+        shoppingCategoryLabel:
+          type: string
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/GroceryItem"
+    GroceryItem:
+      type: object
+      required:
+        - id
+        - ingredientId
+        - ingredientDisplayName
+        - shoppingCategoryId
+        - shoppingCategoryLabel
+        - quantity
+        - unitId
+        - checked
+        - createdAt
+        - updatedAt
+      additionalProperties: false
+      properties:
+        id:
+          type: string
+          format: uuid
+        ingredientId:
+          type: string
+          format: uuid
+        ingredientDisplayName:
+          type: string
+        shoppingCategoryId:
+          type: string
+        shoppingCategoryLabel:
+          type: string
+        quantity:
+          type: number
+          exclusiveMinimum: 0
+        unitId:
+          type: string
+        checked:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    BuildReport:
+      type: object
+      required:
+        - weekStartDate
+        - approvedSlotCount
+        - created
+        - updated
+        - removed
+        - pantryCovered
+        - unmatched
+        - unitConflicts
+        - checkedSkips
+      additionalProperties: false
+      properties:
+        weekStartDate:
+          type: string
+          format: date
+        approvedSlotCount:
+          type: integer
+          minimum: 1
+        created:
+          type: array
+          items:
+            type: string
+            format: uuid
+          description: ingredientIds created (sorted by display name key)
+        updated:
+          type: array
+          items:
+            type: string
+            format: uuid
+        removed:
+          type: array
+          items:
+            type: string
+            format: uuid
+        pantryCovered:
+          type: array
+          items:
+            $ref: "#/components/schemas/PantryCoveredEntry"
+        unmatched:
+          type: array
+          items:
+            $ref: "#/components/schemas/UnmatchedEntry"
+        unitConflicts:
+          type: array
+          items:
+            $ref: "#/components/schemas/UnitConflictEntry"
+        checkedSkips:
+          type: array
+          items:
+            $ref: "#/components/schemas/CheckedSkipEntry"
+    PantryCoveredEntry:
+      type: object
+      required: [ingredientId, mergedNeed, availablePantry]
+      additionalProperties: false
+      properties:
+        ingredientId:
+          type: string
+          format: uuid
+        mergedNeed:
+          type: number
+          minimum: 0
+        availablePantry:
+          type: number
+          minimum: 0
+    UnmatchedEntry:
+      type: object
+      required: [recipeId, day, ingredientName, quantity, unitId]
+      additionalProperties: false
+      properties:
+        recipeId:
+          type: string
+          format: uuid
+        day:
+          $ref: "#/components/schemas/Weekday"
+        ingredientName:
+          type: string
+        quantity:
+          type: number
+          exclusiveMinimum: 0
+        unitId:
+          type: string
+    UnitConflictEntry:
+      type: object
+      required:
+        - recipeId
+        - day
+        - ingredientId
+        - ingredientName
+        - quantity
+        - unitId
+        - expectedUnitId
+      additionalProperties: false
+      properties:
+        recipeId:
+          type: string
+          format: uuid
+        day:
+          $ref: "#/components/schemas/Weekday"
+        ingredientId:
+          type: string
+          format: uuid
+        ingredientName:
+          type: string
+        quantity:
+          type: number
+          exclusiveMinimum: 0
+        unitId:
+          type: string
+        expectedUnitId:
+          type: string
+    CheckedSkipEntry:
+      type: object
+      required:
+        - ingredientId
+        - checkedQuantity
+        - netNeed
+        - remainingShortfall
+      additionalProperties: false
+      properties:
+        ingredientId:
+          type: string
+          format: uuid
+        checkedQuantity:
+          type: number
+          exclusiveMinimum: 0
+        netNeed:
+          type: number
+          minimum: 0
+        remainingShortfall:
+          type: number
+          minimum: 0
+          description: max(0, netNeed - checkedQuantity)
+    Weekday:
+      type: string
+      enum:
+        - monday
+        - tuesday
+        - wednesday
+        - thursday
+        - friday
+        - saturday
+        - sunday
+    Error:
+      type: object
+      required: [code, message]
+      additionalProperties: false
+      properties:
+        code:
+          type: string
+          enum:
+            - VALIDATION_ERROR
+            - BUILD_NO_APPROVED_MEALS
+            - NOT_FOUND
+            - GROCERY_LIST_FULL
+        message:
+          type: string

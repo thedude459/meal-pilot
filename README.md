@@ -34,7 +34,11 @@ Household weekly meal plans for a Monday week-start with up to seven day slots (
 
 ### Generate Weekly Meals (`008`)
 
-Preference-aware library-only generation into WeeklyPlan (`POST /weekly-plans/generate` with `fill-empty` or `regenerate-non-approved`). Rejecting a slot auto-applies one alternative when available. AI recipe creation and BuildGroceryList remain deferred. See [specs/008-generate-weekly-meals/quickstart.md](specs/008-generate-weekly-meals/quickstart.md).
+Preference-aware library-only generation into WeeklyPlan (`POST /weekly-plans/generate` with `fill-empty` or `regenerate-non-approved`). Rejecting a slot auto-applies one alternative when available. AI recipe creation remains deferred. See [specs/008-generate-weekly-meals/quickstart.md](specs/008-generate-weekly-meals/quickstart.md).
+
+### Build Grocery List (`009`)
+
+`POST /grocery-items/build` from approved WeeklyPlan meals: match Recipe ingredient names to the catalog, merge quantities, subtract available (non-expired) pantry, sync unchecked GroceryItems, preserve checked lines, and return a `BuildReport`. Export and UpdatePantry remain deferred. See [specs/009-build-grocery-list/quickstart.md](specs/009-build-grocery-list/quickstart.md).
 
 ### Quick start
 
@@ -54,6 +58,7 @@ API: `http://localhost:3000`
 - Grocery item smoke: [specs/006-grocery-item/quickstart.md](specs/006-grocery-item/quickstart.md)
 - Weekly plan smoke: [specs/007-weekly-plan/quickstart.md](specs/007-weekly-plan/quickstart.md)
 - Generate weekly meals smoke: [specs/008-generate-weekly-meals/quickstart.md](specs/008-generate-weekly-meals/quickstart.md)
+- Build grocery list smoke: [specs/009-build-grocery-list/quickstart.md](specs/009-build-grocery-list/quickstart.md)
 
 ```bash
 npm test
@@ -62,5 +67,5 @@ npm test
 ### Speckit docs
 
 - Constitution: `.specify/memory/constitution.md`
-- Current plan: `specs/008-generate-weekly-meals/plan.md`
-- Generate weekly meals tasks: `specs/008-generate-weekly-meals/tasks.md`
+- Current plan: `specs/009-build-grocery-list/plan.md`
+- Build grocery list tasks: `specs/009-build-grocery-list/tasks.md`
