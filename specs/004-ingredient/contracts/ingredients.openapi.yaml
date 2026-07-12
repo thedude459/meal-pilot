@@ -1,0 +1,276 @@
+openapi: 3.1.0
+info:
+  title: Meal Pilot Ingredients API
+  version: 1.0.0
+  description: >
+    Organizer-facing household Ingredient catalog and shopping-category
+    catalog. Default units reuse GET /ingredient-units from the Recipes
+    feature. Recipe free-text ingredient lines are unchanged.
+servers:
+  - url: http://localhost:3000
+    description: Local development
+paths:
+  /shopping-categories:
+    get:
+      operationId: listShoppingCategories
+      summary: List predefined shopping-category catalog
+      responses:
+        "200":
+          description: Shopping category catalog entries
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/ShoppingCategory"
+  /ingredients:
+    get:
+      operationId: listIngredients
+      summary: List household ingredient catalog (A–Z by display name)
+      responses:
+        "200":
+          description: Ingredients sorted case-insensitive A–Z by displayName
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items, maxIngredients]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Ingredient"
+                  maxIngredients:
+                    type: integer
+                    const: 500
+    post:
+      operationId: createIngredient
+      summary: Create a catalog ingredient
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateIngredientRequest"
+      responses:
+        "201":
+          description: Ingredient created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Ingredient"
+        "400":
+          description: >
+            Validation failure, unknown unit, unknown shopping category, or
+            field/alias limits (INGREDIENT_LIMIT) — not catalog capacity or
+            label conflicts
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: >
+            Label conflict (INGREDIENT_LABEL_CONFLICT) or household catalog
+            already at 500 ingredients (INGREDIENT_CATALOG_FULL)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /ingredients/{ingredientId}:
+    parameters:
+      - $ref: "#/components/parameters/IngredientId"
+    get:
+      operationId: getIngredient
+      summary: Get ingredient detail
+      responses:
+        "200":
+          description: Full ingredient
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Ingredient"
+        "404":
+          description: Ingredient not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    put:
+      operationId: replaceIngredient
+      summary: >
+        Full-replace ingredient fields (last successful write wins;
+        shoppingCategoryId and aliases required; null / [] clear)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReplaceIngredientRequest"
+      responses:
+        "200":
+          description: Normalized ingredient after successful replace
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Ingredient"
+        "400":
+          description: >
+            Validation failure (including omitted shoppingCategoryId or
+            aliases), unknown unit, unknown shopping category, or
+            field/alias limits (INGREDIENT_LIMIT)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Ingredient not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: Label conflict (INGREDIENT_LABEL_CONFLICT)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    delete:
+      operationId: deleteIngredient
+      summary: Permanently delete ingredient from household catalog
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          description: Ingredient not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+components:
+  parameters:
+    IngredientId:
+      name: ingredientId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+  schemas:
+    ShoppingCategory:
+      type: object
+      required: [id, label]
+      properties:
+        id:
+          type: string
+          examples: [produce, dairy, dry_goods]
+        label:
+          type: string
+          examples: [Produce, Dairy, Dry goods]
+    Ingredient:
+      type: object
+      required:
+        - id
+        - householdId
+        - displayName
+        - defaultUnitId
+        - shoppingCategoryId
+        - aliases
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        householdId:
+          type: string
+          format: uuid
+        displayName:
+          type: string
+          minLength: 1
+          maxLength: 80
+        defaultUnitId:
+          type: string
+          description: Must be a known ingredient-units catalog id
+        shoppingCategoryId:
+          type: [string, "null"]
+          description: Shopping-category catalog id, or null if unset
+        aliases:
+          type: array
+          maxItems: 20
+          items:
+            type: string
+            minLength: 1
+            maxLength: 80
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    CreateIngredientRequest:
+      type: object
+      required: [displayName, defaultUnitId]
+      properties:
+        displayName:
+          type: string
+          minLength: 1
+          maxLength: 80
+        defaultUnitId:
+          type: string
+        shoppingCategoryId:
+          type: [string, "null"]
+          description: >
+            Omit or null to leave unset. Non-null must be a known
+            shopping-category id.
+        aliases:
+          type: array
+          maxItems: 20
+          items:
+            type: string
+          description: >
+            Optional; omit treated as []. Blanks discarded; duplicates
+            collapsed; must not match displayName after normalization
+    ReplaceIngredientRequest:
+      type: object
+      required: [displayName, defaultUnitId, shoppingCategoryId, aliases]
+      properties:
+        displayName:
+          type: string
+          minLength: 1
+          maxLength: 80
+        defaultUnitId:
+          type: string
+        shoppingCategoryId:
+          type: [string, "null"]
+          description: >
+            Required on PUT. null clears category. Non-null must be a known
+            shopping-category id. Omitting this field is VALIDATION_ERROR.
+        aliases:
+          type: array
+          maxItems: 20
+          items:
+            type: string
+          description: >
+            Required on PUT (may be []). Blanks discarded; duplicates
+            collapsed; must not match displayName after normalization.
+            Omitting this field is VALIDATION_ERROR.
+    Error:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: string
+          enum:
+            - VALIDATION_ERROR
+            - UNKNOWN_UNIT
+            - UNKNOWN_SHOPPING_CATEGORY
+            - INGREDIENT_LIMIT
+            - INGREDIENT_LABEL_CONFLICT
+            - INGREDIENT_CATALOG_FULL
+            - NOT_FOUND
+        message:
+          type: string

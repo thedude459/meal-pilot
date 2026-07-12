@@ -7,6 +7,10 @@ export const ErrorCode = {
   UNKNOWN_UNIT: "UNKNOWN_UNIT",
   RECIPE_LIMIT: "RECIPE_LIMIT",
   RECIPE_LIBRARY_FULL: "RECIPE_LIBRARY_FULL",
+  UNKNOWN_SHOPPING_CATEGORY: "UNKNOWN_SHOPPING_CATEGORY",
+  INGREDIENT_LIMIT: "INGREDIENT_LIMIT",
+  INGREDIENT_CATALOG_FULL: "INGREDIENT_CATALOG_FULL",
+  INGREDIENT_LABEL_CONFLICT: "INGREDIENT_LABEL_CONFLICT",
   NOT_FOUND: "NOT_FOUND",
 } as const;
 
@@ -68,4 +72,30 @@ export function recipeLibraryFullError(
   message = "Household recipe library limit of 500 reached",
 ): DomainError {
   return new DomainError(ErrorCode.RECIPE_LIBRARY_FULL, message, 409);
+}
+
+export function unknownShoppingCategoryError(id: string): DomainError {
+  return new DomainError(
+    ErrorCode.UNKNOWN_SHOPPING_CATEGORY,
+    `Unknown shopping category: ${id}`,
+    400,
+  );
+}
+
+export function ingredientLimitError(
+  message = "Ingredient update exceeds field length or count limits",
+): DomainError {
+  return new DomainError(ErrorCode.INGREDIENT_LIMIT, message, 400);
+}
+
+export function ingredientCatalogFullError(
+  message = "Household ingredient catalog limit of 500 reached",
+): DomainError {
+  return new DomainError(ErrorCode.INGREDIENT_CATALOG_FULL, message, 409);
+}
+
+export function ingredientLabelConflictError(
+  message = "Ingredient display name or alias conflicts with an existing label",
+): DomainError {
+  return new DomainError(ErrorCode.INGREDIENT_LABEL_CONFLICT, message, 409);
 }
