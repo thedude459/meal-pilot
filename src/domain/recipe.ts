@@ -88,11 +88,13 @@ export type NormalizedRecipeFields = {
   cookTimeMinutes: number | null;
   cuisineTags: string[];
   dietaryAttributeIds: string[];
-  source: "curated";
+  source: RecipeSource;
 };
 
-/** Normalize and validate recipe create/replace input. Always forces source=curated. */
-export function normalizeRecipeInput(input: RecipeInput): NormalizedRecipeFields {
+function normalizeRecipeFields(
+  input: RecipeInput,
+  source: RecipeSource,
+): NormalizedRecipeFields {
   const title = input.title.trim();
   if (!title) {
     throw validationError("Title is required");
@@ -185,6 +187,16 @@ export function normalizeRecipeInput(input: RecipeInput): NormalizedRecipeFields
     }),
     cuisineTags,
     dietaryAttributeIds,
-    source: "curated",
+    source,
   };
+}
+
+/** Normalize and validate recipe create/replace input. Always forces source=curated. */
+export function normalizeRecipeInput(input: RecipeInput): NormalizedRecipeFields & { source: "curated" } {
+  return normalizeRecipeFields(input, "curated") as NormalizedRecipeFields & { source: "curated" };
+}
+
+/** Normalize and validate AI recipe acceptance. Always forces source=ai. */
+export function normalizeAiRecipeInput(input: RecipeInput): NormalizedRecipeFields & { source: "ai" } {
+  return normalizeRecipeFields(input, "ai") as NormalizedRecipeFields & { source: "ai" };
 }

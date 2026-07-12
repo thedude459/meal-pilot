@@ -25,6 +25,8 @@ export const ErrorCode = {
   GENERATION_NO_PREFERENCES: "GENERATION_NO_PREFERENCES",
   BUILD_NO_APPROVED_MEALS: "BUILD_NO_APPROVED_MEALS",
   UPDATE_PANTRY_NO_CHECKED: "UPDATE_PANTRY_NO_CHECKED",
+  HYBRID_GENERATION_FAILED: "HYBRID_GENERATION_FAILED",
+  HYBRID_REPLACE_CURATED_FORBIDDEN: "HYBRID_REPLACE_CURATED_FORBIDDEN",
   NOT_FOUND: "NOT_FOUND",
 } as const;
 
@@ -196,4 +198,16 @@ export function updatePantryNoCheckedError(
   message = "At least one checked grocery item is required to update the pantry",
 ): DomainError {
   return new DomainError(ErrorCode.UPDATE_PANTRY_NO_CHECKED, message, 400);
+}
+
+export function hybridGenerationFailedError(
+  message = "AI recipe generation failed after retries",
+): DomainError {
+  return new DomainError(ErrorCode.HYBRID_GENERATION_FAILED, message, 502);
+}
+
+export function hybridReplaceCuratedForbiddenError(
+  message = "Replace-in-place is not allowed for curated recipes",
+): DomainError {
+  return new DomainError(ErrorCode.HYBRID_REPLACE_CURATED_FORBIDDEN, message, 400);
 }
